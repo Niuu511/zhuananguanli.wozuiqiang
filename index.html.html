@@ -1,0 +1,2204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AHEAD 華宇企管 — 專案管理系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: "Microsoft JhengHei", "PingFang TC", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    /* ==================== 請款與專案狀態專屬色系 ==================== */
+    /* 已開立發票：紫色 (#7030A0) */
+    .badge-invoiced {
+      background-color: #7030A0;
+      color: #FFFFFF;
+      border: 1px solid #58247E;
+    }
+    /* 未開立發票：咖啡色 (#833C0B) */
+    .badge-uninvoiced {
+      background-color: #833C0B;
+      color: #FFFFFF;
+      border: 1px solid #632C07;
+    }
+    /* 尾款：膚色 (#F7CAAC) */
+    .badge-final {
+      background-color: #F7CAAC;
+      color: #4A2511;
+      border: 1px solid #E2AE8B;
+    }
+    /* 終止輔導：玫瑰紅標籤 */
+    .badge-terminated {
+      background-color: #FFE4E6;
+      color: #BE123C;
+      border: 1px solid #FDA4AF;
+    }
+    /* 已結案：灰底標籤 */
+    .badge-closed {
+      background-color: #E2E8F0;
+      color: #334155;
+      border: 1px solid #CBD5E1;
+    }
+    .modal-backdrop {
+      background-color: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+    }
+    /* 自訂捲軸樣式 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- ==================== 1. 登入畫面 (#loginScreen) ==================== -->
+  <div id="loginScreen" class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200/80">
+      <div class="p-8 pb-6 text-center border-b border-slate-100">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 text-white font-extrabold text-xl tracking-wider shadow-lg mb-4">
+          AH
+        </div>
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+          AHEAD 華宇企管
+        </h1>
+        <p class="text-sm font-semibold text-indigo-700 mt-1">
+          專案管理
+        </p>
+      </div>
+
+      <div class="p-7 space-y-5">
+        <form id="loginForm" class="space-y-4" autocomplete="off">
+          <div>
+            <label for="loginUser" class="block text-xs font-bold text-slate-700 mb-1.5">登入帳號</label>
+            <input type="text" id="loginUser" autocomplete="off" required
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label for="loginPass" class="block text-xs font-bold text-slate-700 mb-1.5">登入密碼</label>
+            <input type="password" id="loginPass" autocomplete="off" required
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+
+          <p id="loginErrorMsg" class="hidden text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+            帳號或密碼錯誤，請確認後再試。
+          </p>
+
+          <button type="submit"
+            class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition">
+            登入系統
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 2. 主系統畫面 (#appScreen) ==================== -->
+  <div id="appScreen" class="hidden flex-1 flex flex-col">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+      <div class="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shadow-xs">
+            AH
+          </div>
+          <div>
+            <div class="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">AHEAD 專案管理系統</div>
+            <div class="text-[11px] text-slate-500 hidden sm:block">華宇企業管理顧問股份有限公司</div>
+          </div>
+        </div>
+
+        <nav class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <button type="button" id="navOverviewBtn" onclick="switchView('overview')"
+            class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-2xs transition">
+            專案總覽
+          </button>
+          <button type="button" id="navSettingsBtn" onclick="switchView('settings')"
+            class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition">
+            系統設定 &amp; 雲端備份
+          </button>
+        </nav>
+
+        <div class="flex items-center gap-2.5">
+          <span id="currentUserBadge" class="hidden md:inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-200">
+            登入者：zoe
+          </span>
+          <button type="button" onclick="logout()"
+            class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 transition">
+            登出
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== 視圖 A：專案總覽 (Overview View) ==================== -->
+    <main id="overviewView" class="max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-5 space-y-4 flex-1">
+
+      <!-- 篩選操作卡片 -->
+      <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3.5">
+
+        <!-- 第一列：狀態頁籤 + 新增專案按鈕 -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="tabActiveBtn" onclick="setStatusTab('active')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-indigo-600 text-white shadow-xs transition">
+              進行中專案
+            </button>
+            <button type="button" id="tabClosedBtn" onclick="setStatusTab('closed')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              已結案專案
+            </button>
+            <button type="button" id="tabAllBtn" onclick="setStatusTab('all')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              全部專案
+            </button>
+          </div>
+
+          <button type="button" onclick="openCreateProjectModal()"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold shadow-sm transition flex items-center gap-1.5">
+            <span>+ 新增專案</span>
+          </button>
+        </div>
+
+        <!-- 已結案子分類篩選列（切換至「已結案專案」時顯示） -->
+        <div id="closedSubFilterBar" class="hidden px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-slate-600 mr-1">結案類型篩選：</span>
+            <button type="button" id="subClosedAllBtn" onclick="setClosedSubFilter('all')"
+              class="px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-white transition">
+              全部結案
+            </button>
+            <button type="button" id="subClosedCompletedBtn" onclick="setClosedSubFilter('completed')"
+              class="px-3 py-1 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition">
+              正常結案
+            </button>
+            <button type="button" id="subClosedTerminatedBtn" onclick="setClosedSubFilter('terminated')"
+              class="px-3 py-1 rounded-lg text-xs font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 transition">
+              終止輔導
+            </button>
+          </div>
+          <span class="text-[11px] text-slate-500">點擊「明細」可檢視終止紀錄或恢復為進行中</span>
+        </div>
+
+        <!-- 第二列：關鍵字搜尋 + 請款狀態下拉篩選 + 狀態色塊標籤（無顏色文字解釋） -->
+        <div class="pt-2 border-t border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+            <div class="relative flex-1 max-w-md">
+              <label for="searchInput" class="sr-only">搜尋專案</label>
+              <input type="text" id="searchInput" oninput="renderProjectsTable()"
+                class="w-full pl-3.5 pr-9 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white" />
+              <button type="button" onclick="clearSearchInput()" id="clearSearchBtn"
+                class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 text-sm font-bold px-1">&times;</button>
+            </div>
+
+            <select id="billingFilterSelect" onchange="renderProjectsTable()"
+              class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="all">請款狀態：全部</option>
+              <option value="has_uninvoiced">含未開立發票</option>
+              <option value="has_final">含尾款待請</option>
+              <option value="all_invoiced">已全數開立</option>
+            </select>
+          </div>
+
+          <!-- 右側狀態底色標籤（刪除圖例與顏色文字解釋） -->
+          <div class="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+            <span class="badge-invoiced px-2.5 py-1 rounded-md shadow-2xs">已開立發票</span>
+            <span class="badge-uninvoiced px-2.5 py-1 rounded-md shadow-2xs">未開立發票</span>
+            <span class="badge-final px-2.5 py-1 rounded-md shadow-2xs">尾款</span>
+            <span class="badge-terminated px-2.5 py-1 rounded-md">終止輔導</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 業務分組專案區塊列表 -->
+      <div id="specialistBlocksContainer" class="space-y-5">
+        <!-- 由 JS 依業務分組動態渲染獨立區塊 -->
+      </div>
+
+      <!-- 空資料提示卡片 -->
+      <div id="emptyProjectsState" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm py-14 text-center space-y-2">
+        <p id="emptyProjectsMsg" class="text-slate-500 font-bold text-sm">目前尚無專案資料</p>
+        <button type="button" id="emptyResetFilterBtn" onclick="resetAllFilters()"
+          class="hidden px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+          清除篩選條件
+        </button>
+      </div>
+
+      <!-- 底部狀態列 -->
+      <div class="px-4 sm:px-6 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between text-xs text-slate-500">
+        <span id="tableFooterCount">顯示 0 筆專案</span>
+        <span>點擊「明細」可檢視聯絡窗口、編輯合約與請款紀錄；進行中專案可點擊「終止」辦理終止輔導</span>
+      </div>
+    </main>
+
+    <!-- ==================== 視圖 B：系統設定 & 雲端備份 (Settings View) ==================== -->
+    <main id="settingsView" class="hidden max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
+
+      <!-- 1. 專企人員名單管理 -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div>
+          <h2 class="text-base sm:text-lg font-extrabold text-slate-900">1. 專企人員名單管理</h2>
+          <p class="text-xs text-slate-500 mt-0.5">新增或移除專企人員後，將即時同步更新首頁業務區塊與專案下拉選單。</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2" id="settingsSpecialistList">
+          <!-- 由 JS 動態渲染 -->
+        </div>
+
+        <form id="addSpecialistForm" class="flex flex-col sm:flex-row gap-2 max-w-md pt-1">
+          <input type="text" id="newSpecialistInput"
+            class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button type="submit"
+            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition">
+            + 新增專企
+          </button>
+        </form>
+      </section>
+
+      <!-- 2. 系統登入帳號權限管理 -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div>
+          <h2 class="text-base sm:text-lg font-extrabold text-slate-900">2. 系統登入帳號權限管理</h2>
+          <p class="text-xs text-slate-500 mt-0.5">預設保留管理員帳號 <code class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">zoe</code>，可新增其他同仁或主管登入帳號。</p>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-600">
+                <th class="py-2.5 px-4">登入帳號</th>
+                <th class="py-2.5 px-4">顯示名稱 / 角色</th>
+                <th class="py-2.5 px-4">密碼</th>
+                <th class="py-2.5 px-4 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="settingsAccountsTable" class="divide-y divide-slate-100">
+              <!-- 由 JS 動態渲染 -->
+            </tbody>
+          </table>
+        </div>
+
+        <form id="addAccountForm" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 pt-1">
+          <div>
+            <label for="newAccUser" class="block text-[11px] font-bold text-slate-600 mb-1">登入帳號</label>
+            <input type="text" id="newAccUser" required
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label for="newAccName" class="block text-[11px] font-bold text-slate-600 mb-1">顯示名稱</label>
+            <input type="text" id="newAccName" required
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label for="newAccPass" class="block text-[11px] font-bold text-slate-600 mb-1">設定密碼</label>
+            <input type="text" id="newAccPass" required
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit"
+              class="w-full px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold transition">
+              + 新增帳號
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 3. Google 後台試算表備份與本機資料管理 -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div>
+          <h2 class="text-base sm:text-lg font-extrabold text-slate-900">3. Google 後台試算表備份與本機資料管理</h2>
+          <p class="text-xs text-slate-500 mt-0.5">設定 Google Apps Script Web App 網址後，可一鍵將全公司專案與請款資料同步至 Google 試算表，或進行本機 JSON 備份匯出與匯入。</p>
+        </div>
+
+        <div class="space-y-2">
+          <label for="gasUrlInput" class="block text-xs font-bold text-slate-700">Google Apps Script Web App URL</label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="url" id="gasUrlInput"
+              class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button type="button" onclick="saveGasUrl()"
+              class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition">
+              儲存網址
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2.5 pt-1">
+          <button type="button" onclick="backupToGoogleSheet()"
+            class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-2xs transition">
+            立即備份至 Google 試算表
+          </button>
+          <button type="button" onclick="restoreFromGoogleSheet()"
+            class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-bold shadow-2xs transition">
+            從 Google 試算表還原
+          </button>
+          <button type="button" onclick="downloadJsonBackup()"
+            class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold shadow-2xs transition">
+            下載 JSON 備份檔
+          </button>
+          <button type="button" onclick="document.getElementById('jsonImportInput').click()"
+            class="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300 text-xs sm:text-sm font-bold transition">
+            匯入 JSON 備份檔
+          </button>
+          <input type="file" id="jsonImportInput" accept=".json" class="hidden" onchange="importJsonBackup(event)" />
+          <button type="button" onclick="promptResetInitialData()"
+            class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs sm:text-sm font-bold transition">
+            清空所有專案資料
+          </button>
+        </div>
+
+        <!-- 可展開檢視的 Code.gs 後台程式碼 -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <button type="button" onclick="toggleGasCodeBlock()"
+            class="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200/70 text-left flex items-center justify-between text-xs font-extrabold text-slate-700 transition">
+            <span>檢視 Google Apps Script 後台程式碼 (Code.gs)</span>
+            <span id="gasCodeToggleArrow">▼ 展開</span>
+          </button>
+          <div id="gasCodeContainer" class="hidden p-4 bg-slate-900 text-slate-100 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">請將以下程式碼貼入 Google 試算表 &gt; 擴充功能 &gt; Apps Script 中並部署為網頁應用程式：</span>
+              <button type="button" onclick="copyGasCode()"
+                class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+                複製程式碼
+              </button>
+            </div>
+            <pre id="gasCodePre" class="text-xs font-mono overflow-x-auto leading-relaxed text-emerald-300 p-3 bg-slate-950 rounded-lg border border-slate-800">function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('AHEAD_DB') || ss.insertSheet('AHEAD_DB');
+  var raw = sheet.getRange('A1').getValue();
+  return ContentService.createTextOutput(raw || '{"projects":[]}')
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('AHEAD_DB') || ss.insertSheet('AHEAD_DB');
+  var payload = e.postData.contents;
+  sheet.getRange('A1').setValue(payload);
+  sheet.getRange('A2').setValue('最後備份時間：' + new Date().toLocaleString('zh-TW'));
+  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ==================== 3. 專案明細 / 新增 / 終止輔導 Modal ==================== -->
+  <div id="projectModal" class="hidden fixed inset-0 z-40 modal-backdrop flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col border border-slate-200 overflow-hidden my-auto">
+
+      <!-- Modal 頂部標題列 -->
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div>
+          <h3 id="modalHeaderTitle" class="text-base sm:text-lg font-extrabold">專案明細與請款進度管理</h3>
+          <p id="modalHeaderSub" class="text-xs text-slate-300 mt-0.5">完整編輯合約資訊、請款進度與往來追蹤紀錄</p>
+        </div>
+        <button type="button" onclick="closeProjectModal()"
+          class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl font-bold transition">
+          &times;
+        </button>
+      </div>
+
+      <!-- Modal 頂部狀態橫幅 -->
+      <div id="modalStatusBanner" class="px-5 py-3 bg-indigo-50 border-b border-indigo-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-600">目前專案狀態：</span>
+          <span id="modalStatusBadge" class="px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-600 text-white">
+            進行中專案
+          </span>
+        </div>
+
+        <div id="modalActiveActionBtns" class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="openTerminateConfirmModal()"
+            class="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-xs transition flex items-center gap-1">
+            <span>⛔ 終止輔導</span>
+          </button>
+          <button type="button" onclick="promptNormalCloseProject()"
+            class="px-3.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-extrabold shadow-xs transition flex items-center gap-1">
+            <span>✓ 完成結案</span>
+          </button>
+        </div>
+
+        <div id="modalClosedActionBtns" class="hidden flex flex-wrap items-center gap-2">
+          <button type="button" onclick="promptReopenProject()"
+            class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold shadow-xs transition flex items-center gap-1">
+            <span>↺ 恢復為進行中專案</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal 可捲動五區塊表單內容 -->
+      <form id="projectDetailForm" class="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-sm">
+        <input type="hidden" id="editProjectId" />
+
+        <!-- 一、合約與輔導基本資訊 -->
+        <div class="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+          <h4 class="text-sm font-extrabold text-slate-900 border-l-4 border-indigo-600 pl-2.5">
+            一、合約與輔導基本資訊
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <div>
+              <label for="fContractNo" class="block text-xs font-bold text-slate-600 mb-1">合約編號</label>
+              <input type="text" id="fContractNo"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="fClientName" class="block text-xs font-bold text-slate-600 mb-1">客戶名稱 *</label>
+              <input type="text" id="fClientName" required
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="fSpecialist" class="block text-xs font-bold text-slate-600 mb-1">負責專企 *</label>
+              <select id="fSpecialist" required onchange="updateSpecialistSelectStyle()"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500">
+              </select>
+            </div>
+            <div class="sm:col-span-2 lg:col-span-1">
+              <label for="fProjectType" class="block text-xs font-bold text-slate-600 mb-1">案別 / 輔導項目 *</label>
+              <input type="text" id="fProjectType" required
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="fPeriod" class="block text-xs font-bold text-slate-600 mb-1">輔導期間</label>
+              <input type="text" id="fPeriod"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="fConsultant" class="block text-xs font-bold text-slate-600 mb-1">顧問師</label>
+              <input type="text" id="fConsultant"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 二、客戶方聯絡資料 -->
+        <div class="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+          <h4 class="text-sm font-extrabold text-slate-900 border-l-4 border-sky-600 pl-2.5">
+            二、客戶方聯絡資料
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <div>
+              <label for="fContactPerson" class="block text-xs font-bold text-slate-600 mb-1">聯絡人 / 職稱</label>
+              <input type="text" id="fContactPerson"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="fContactPhone" class="block text-xs font-bold text-slate-600 mb-1">聯絡電話 / 分機</label>
+              <input type="text" id="fContactPhone"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="fContactEmail" class="block text-xs font-bold text-slate-600 mb-1">Email 信箱</label>
+              <input type="text" id="fContactEmail"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="sm:col-span-2 lg:col-span-3">
+              <label for="fContactAddress" class="block text-xs font-bold text-slate-600 mb-1">聯絡地址</label>
+              <input type="text" id="fContactAddress"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 三、執行項目與驗證資訊（新增備註欄） -->
+        <div class="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+          <h4 class="text-sm font-extrabold text-slate-900 border-l-4 border-teal-600 pl-2.5">
+            三、執行項目與驗證資訊
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+            <div class="md:col-span-5 flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-slate-200">
+              <label class="inline-flex items-center gap-2 text-xs font-extrabold text-slate-800 cursor-pointer shrink-0">
+                <input type="checkbox" id="fHasCertification" onchange="toggleCertBodyInput()" class="w-4 h-4 rounded text-indigo-600" />
+                <span>驗證</span>
+              </label>
+              <label for="fCertBody" class="sr-only">驗證公司</label>
+              <input type="text" id="fCertBody"
+                class="flex-1 px-2.5 py-1 rounded-lg border border-slate-300 text-xs outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div class="md:col-span-7 flex flex-wrap items-center gap-4 bg-white px-4 py-2.5 rounded-xl border border-slate-200">
+              <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="checkbox" id="fHasDesign" class="w-4 h-4 rounded text-indigo-600" />
+                <span>美編</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="checkbox" id="fHasTranslation" class="w-4 h-4 rounded text-indigo-600" />
+                <span>翻譯</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="checkbox" id="fHasInternalAuditCert" class="w-4 h-4 rounded text-indigo-600" />
+                <span>內稽證書</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input type="checkbox" id="fHasBanner" class="w-4 h-4 rounded text-indigo-600" />
+                <span>布條</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label for="fExtraNote" class="block text-xs font-bold text-slate-600 mb-1">備註</label>
+            <input type="text" id="fExtraNote"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <!-- 四、請款紀錄（系統預設最後一筆請款就是尾款，且此行底色深於其他行） -->
+        <div class="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="text-sm font-extrabold text-slate-900 border-l-4 border-[#7030A0] pl-2.5">
+                四、請款紀錄
+              </h4>
+              <p id="modalBillingSummaryText" class="text-xs text-slate-600 font-semibold mt-1 pl-3">
+                合約總金額：$0 ｜ 已開立：$0 ｜ 未開立：$0 ｜ 尾款：$0
+              </p>
+            </div>
+            <button type="button" onclick="addBillingRow()"
+              class="px-3 py-1.5 rounded-xl bg-[#7030A0] hover:bg-[#58247E] text-white text-xs font-bold shadow-2xs transition">
+              + 新增請款期數
+            </button>
+          </div>
+
+          <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+            <table class="w-full text-left border-collapse min-w-[680px]">
+              <thead>
+                <tr class="bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-600">
+                  <th class="py-2.5 px-3 w-24 text-center">期別</th>
+                  <th class="py-2.5 px-3 w-28">狀態標籤</th>
+                  <th class="py-2.5 px-3 w-24">預計月份</th>
+                  <th class="py-2.5 px-3">請款條件 / 里程碑</th>
+                  <th class="py-2.5 px-3 w-36">請款金額</th>
+                  <th class="py-2.5 px-3 w-20 text-center">已開立</th>
+                  <th class="py-2.5 px-3 w-16 text-center">刪除</th>
+                </tr>
+              </thead>
+              <tbody id="billingRowsContainer" class="text-xs">
+                <!-- 由 JS 動態渲染 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 五、往來及追蹤紀錄 -->
+        <div class="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-sm font-extrabold text-slate-900 border-l-4 border-amber-500 pl-2.5">
+              五、往來及追蹤紀錄
+            </h4>
+            <button type="button" onclick="addCommLogRow()"
+              class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-2xs transition">
+              + 新增追蹤紀錄
+            </button>
+          </div>
+
+          <div class="space-y-2" id="commLogsContainer">
+            <!-- 由 JS 動態渲染 -->
+          </div>
+        </div>
+      </form>
+
+      <!-- Modal 底部操作列 -->
+      <div class="px-5 py-3.5 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        <!-- 左側狀態操作與刪除按鈕 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div id="modalFooterActiveBtns" class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openTerminateConfirmModal()"
+              class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-2xs transition">
+              ⛔ 終止輔導
+            </button>
+            <button type="button" onclick="promptNormalCloseProject()"
+              class="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-extrabold shadow-2xs transition">
+              ✓ 完成結案
+            </button>
+          </div>
+          <div id="modalFooterClosedBtns" class="hidden">
+            <button type="button" onclick="promptReopenProject()"
+              class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold shadow-2xs transition">
+              ↺ 恢復為進行中專案
+            </button>
+          </div>
+          <button type="button" id="modalDeleteProjectBtn" onclick="promptDeleteProject()"
+            class="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 text-xs font-bold transition">
+            刪除
+          </button>
+        </div>
+
+        <!-- 右側取消與儲存變更按鈕 -->
+        <div class="flex items-center gap-2 ml-auto">
+          <button type="button" onclick="closeProjectModal()"
+            class="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs sm:text-sm font-bold transition">
+            取消
+          </button>
+          <button type="submit" form="projectDetailForm"
+            class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-extrabold shadow-sm transition">
+            儲存變更
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 4. 「⛔ 終止輔導」二次確認對話視窗 ==================== -->
+  <div id="terminateConfirmModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md border-2 border-rose-300 overflow-hidden">
+      <div class="px-5 py-4 bg-rose-600 text-white flex items-center gap-2.5">
+        <span class="text-lg">⛔</span>
+        <div>
+          <h3 class="text-base font-extrabold">確認執行「終止輔導」</h3>
+          <p class="text-xs text-rose-100">專案將移入結案區並標示為玫瑰紅色「終止輔導」</p>
+        </div>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 space-y-1">
+          <div class="text-xs font-bold text-rose-800">即將終止輔導之專案：</div>
+          <div id="terminateTargetClient" class="text-sm font-extrabold text-slate-900">客戶名稱</div>
+          <div id="terminateTargetProject" class="text-xs font-semibold text-slate-600">案別名稱</div>
+        </div>
+
+        <div>
+          <label for="terminateReasonInput" class="block text-xs font-bold text-slate-700 mb-1.5">
+            終止原因 / 備註
+          </label>
+          <input type="text" id="terminateReasonInput"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-rose-500" />
+          <p class="text-[11px] text-slate-500 mt-1.5">
+            確認後系統將自動於「往來及追蹤紀錄」新增一筆帶今日日期的 <code class="bg-slate-100 px-1 rounded">[終止輔導]</code> 紀錄。
+          </p>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeTerminateConfirmModal()"
+            class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition">
+            取消
+          </button>
+          <button type="button" onclick="confirmTerminateProject()"
+            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-sm transition">
+            確認終止輔導並移至結案
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 5. 通用二次確認對話視窗 (完成結案 / 恢復 / 刪除 / 重置) ==================== -->
+  <div id="genericConfirmModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-200 space-y-4">
+      <div class="space-y-1.5">
+        <h3 id="genericConfirmTitle" class="text-base font-extrabold text-slate-900">確認操作</h3>
+        <p id="genericConfirmMsg" class="text-xs text-slate-600 leading-relaxed"></p>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeGenericConfirm()"
+          class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100">
+          取消
+        </button>
+        <button type="button" id="genericConfirmBtn"
+          class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold">
+          確認執行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 6. 浮動提示 Toast ==================== -->
+  <div id="toastNotification" class="hidden fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2.5">
+    <span id="toastIndicator" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+    <span id="toastMessage"></span>
+  </div>
+
+  <script>
+    // ==================== 一、系統初始資料 ====================
+    const STORAGE_KEY = "ahead_pms_imported_full_v2";
+
+    const DEFAULT_SPECIALISTS = [
+      "Sunny 羅靜婷",
+      "Cindy 汪芯卉",
+      "Richard 武其融",
+      "Tiffany 黃秋惠",
+      "Sandy 曹海英",
+      "Tony 吳啟揚",
+      "Avery 彭勗堯"
+    ];
+
+    const DEFAULT_ACCOUNTS = [
+      { username: "zoe", displayName: "Zoe (管理員)", password: "0511" }
+    ];
+
+    // 進行中專案（解析自 X-2025專案管理(妞)_2.xlsx，含聯合輔導案台_25-06-131整併）
+    const INITIAL_ACTIVE_PROJECTS = [
+      { id: "act_01", status: "active", closeType: null, contractNo: "", clientName: "正文科技股份有限公司", projectType: "ISO 20400 永續採購指南", period: "2025.3~2025.12 (10)", consultant: "", specialist: "Sunny 羅靜婷", contactPerson: "Annie 鍾秀琴 (採購)", contactPhone: "(03)598-5535 #1059", contactEmail: "", contactAddress: "303035新竹縣湖口鄉中華路15-1號", extras: { hasCertification: true, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/3", condition: "簽約金", amount: 238560, invoiced: false, isFinal: false }, { term: "第2期", month: "114/7", condition: "顧問輔導費", amount: 178920, invoiced: false, isFinal: false }, { term: "第3期", month: "114/12", condition: "顧問輔導費", amount: 178920, invoiced: false, isFinal: true }], commLogs: [{ date: "3/17", note: "3/17開案" }] },
+      { id: "act_02", status: "active", closeType: null, contractNo: "", clientName: "技嘉科技股份有限公司", projectType: "(內訓)ISO 31000 風險管理系統", period: "", consultant: "", specialist: "Sunny 羅靜婷", contactPerson: "", contactPhone: "", contactEmail: "", contactAddress: "231008新北市新店區寶強路6號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/6", condition: "內訓費用", amount: 99000, invoiced: false, isFinal: true }], commLogs: [{ date: "2月20日", note: "課程結束後再請款；授課時間【4/10_5/8_6/12】" }] },
+      { id: "act_03", status: "active", closeType: null, contractNo: "台_25-06-128", clientName: "億光電子工業股份有限公司", projectType: "GHG Protocol 溫室氣體盤查協議", period: "2025/6~2026/Q1", consultant: "利錦文_包案", specialist: "Sunny 羅靜婷", contactPerson: "黃沛瑜", contactPhone: "(02)2685-6688 #7418", contactEmail: "erinhuang@everlight.com", contactAddress: "238018新北市樹林區中華路6之8號", extras: { hasCertification: true, certBody: "貝爾", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: true, note: "" }, billings: [{ term: "第1期", month: "114/6", condition: "專案啟動", amount: 68985, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "教育訓練完成", amount: 68985, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "清冊報告產出", amount: 91980, invoiced: false, isFinal: false }, { term: "第4期", month: "", condition: "查證申請書提交", amount: 79800, invoiced: false, isFinal: false }, { term: "第5期", month: "", condition: "取得查證通知書", amount: 79800, invoiced: false, isFinal: true }], commLogs: [{ date: "6月10日", note: "92450732001310238004 合約一式兩份" }] },
+      { id: "act_04", status: "active", closeType: null, contractNo: "台_25-06-131", clientName: "聯合輔導(補助)：康普材料／天弘化學／恆誼化工", projectType: "GHG Protocol溫室氣體盤查、產品碳足跡及ISO 14067補助聯合輔導", period: "2025/6~2025/12 (7)", consultant: "(聯合輔導)利錦文_包案+藍偉倫_25次", specialist: "Tiffany 黃秋惠", contactPerson: "康普-賴郁璇 / 天弘-丁岳英 / 恆誼-陳秀真Nina", contactPhone: "康普(03)598-3101#3235 / 天弘(03)598-5750#3234 / 恆誼(037)623-396#1198", contactEmail: "ivy.lai@coremaxcorp.com; yushying.ding@uranuschemicals.com.tw; nina.chen@hengi.com.tw", contactAddress: "新竹縣湖口鄉文化路11號 / 實踐路18號 / 苗栗縣頭份市中華路440號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "三家聯合輔導整併同一專案：康普材料($274,500)、天弘化學($354,500)、恆誼化工($50,000)" }, billings: [{ term: "第1期", month: "114/6", condition: "康普材料－簽約金", amount: 150000, invoiced: true, isFinal: false }, { term: "第2期", month: "114/6", condition: "天弘化學－簽約金", amount: 150000, invoiced: true, isFinal: false }, { term: "第3期", month: "114/6", condition: "恆誼化工－簽約金", amount: 50000, invoiced: true, isFinal: false }, { term: "第4期", month: "114/11", condition: "康普材料－完成產品碳足跡LCA地圖", amount: 60000, invoiced: true, isFinal: false }, { term: "第5期", month: "114/11", condition: "天弘化學－完成產品碳足跡LCA地圖", amount: 104500, invoiced: true, isFinal: false }, { term: "第6期", month: "", condition: "康普材料－完成產品碳足跡報告", amount: 64500, invoiced: false, isFinal: false }, { term: "第7期", month: "", condition: "天弘化學－完成產品碳足跡報告", amount: 100000, invoiced: false, isFinal: true }], commLogs: [{ date: "11月19日", note: "天弘第二期發票 mail" }, { date: "11月17日", note: "康普第二期發票 mail" }, { date: "6月18日", note: "恆誼簽約金發票 mail" }] },
+      { id: "act_07", status: "active", closeType: null, contractNo: "台_25-08-178", clientName: "連鋐科技股份有限公司(鼎新)", projectType: "ISO 14064-1暨ESG永續報告書", period: "2025/8~2026/8", consultant: "孫樂安_包案 (45W)", specialist: "Cindy 汪芯卉", contactPerson: "", contactPhone: "", contactEmail: "", contactAddress: "333桃園市龜山區萬壽路一段492-1號5樓之2", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/8", condition: "(64+ESG)規劃書", amount: 549000, invoiced: true, isFinal: false }, { term: "第2期", month: "114/12", condition: "(64)排放源鑑別完成", amount: 122000, invoiced: true, isFinal: false }, { term: "第3期", month: "115/3", condition: "(64)溫盤報告書/清冊", amount: 122000, invoiced: true, isFinal: false }, { term: "第4期", month: "115/5", condition: "(64)驗證結果通知書", amount: 122000, invoiced: false, isFinal: false }, { term: "第5期", month: "115/4", condition: "(ESG)重大主題確認", amount: 122000, invoiced: false, isFinal: false }, { term: "第6期", month: "115/8", condition: "(ESG)永續報告書定稿", amount: 183000, invoiced: false, isFinal: true }], commLogs: [{ date: "6月2日", note: "mail 14064-1+27001內稽證書" }] },
+      { id: "act_08", status: "active", closeType: null, contractNo: "台_25-08-193", clientName: "吉祥工業股份有限公司", projectType: "ISO 14001:2015環境管理系統", period: "2025/9~2026/2 (6)", consultant: "翁國鈞_15", specialist: "Tiffany 黃秋惠", contactPerson: "黃星輔 經理", contactPhone: "(02)2601-6622 #520", contactEmail: "paul@jsn.com.tw", contactAddress: "24450 新北市林口區工二工業區七路11號", extras: { hasCertification: true, certBody: "奧爾德", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: true, note: "" }, billings: [{ term: "第1期", month: "114/8", condition: "簽約金", amount: 90885, invoiced: true, isFinal: false }, { term: "第2期", month: "114/10~12", condition: "顧問輔導費(3期)", amount: 106020, invoiced: true, isFinal: false }, { term: "第3期", month: "115/1~2", condition: "顧問輔導費(2期)", amount: 70680, invoiced: false, isFinal: false }, { term: "第4期", month: "115/3", condition: "顧問輔導費(尾款)", amount: 35340, invoiced: false, isFinal: true }], commLogs: [{ date: "12月3日", note: "mail 發票(7-4)" }] },
+      { id: "act_09", status: "active", closeType: null, contractNo: "台_25-09-209", clientName: "普達系統股份有限公司", projectType: "ISO 14064-1 暨 ESG永續報告書", period: "2025/9~2027/6 (22)", consultant: "64_陳建彰*9+ESG_研發中心*包案(8W)", specialist: "Sunny 羅靜婷", contactPerson: "胡木鵬 管理處 協理", contactPhone: "(02)7721-4688", contactEmail: "nathan.hu@poindus.com", contactAddress: "114731臺北市內湖區行愛路77巷59號5樓", extras: { hasCertification: false, certBody: "", hasDesign: true, hasTranslation: false, hasInternalAuditCert: false, hasBanner: true, note: "" }, billings: [{ term: "第1期", month: "114/9", condition: "簽約金", amount: 276360, invoiced: true, isFinal: false }, { term: "第2期", month: "114/10", condition: "啟動會議", amount: 46060, invoiced: true, isFinal: false }, { term: "第3期", month: "", condition: "後續階段(第3~9期)", amount: 322420, invoiced: false, isFinal: false }, { term: "第4期", month: "", condition: "報告書中文版美編完成", amount: 46060, invoiced: false, isFinal: true }], commLogs: [{ date: "10月2日", note: "mail 發票(10-2)" }] },
+      { id: "act_10", status: "active", closeType: null, contractNo: "台_25-10-230", clientName: "思渤科技股份有限公司", projectType: "ISO 27001 資訊安全管理系統", period: "2025/10~2026/3 (6)", consultant: "張寬增_25", specialist: "Richard 武其融", contactPerson: "王志賢", contactPhone: "0975-591-775", contactEmail: "jayson.wang@cybernet-ap.com.tw", contactAddress: "300046新竹市東區公道五路二段178號5樓", extras: { hasCertification: true, certBody: "亞瑞仕", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/10", condition: "簽約金", amount: 219240, invoiced: true, isFinal: false }, { term: "第2期", month: "115/1~5", condition: "文件/內稽/驗證(3期)", amount: 328860, invoiced: true, isFinal: false }, { term: "第3期", month: "116/5", condition: "2027續評", amount: 89040, invoiced: false, isFinal: false }, { term: "第4期", month: "117/5", condition: "2028續評", amount: 89040, invoiced: false, isFinal: true }], commLogs: [{ date: "5月12日", note: "mail 發票(6-4)" }] },
+      { id: "act_11", status: "active", closeType: null, contractNo: "台_25-12-276", clientName: "協易機械股份有限公司", projectType: "ESG 永續報告書", period: "2025/12~2026/7 (8)", consultant: "利錦文_包案", specialist: "Sunny 羅靜婷", contactPerson: "陳宛琪", contactPhone: "(03)352-5466 #3607", contactEmail: "blanche.chen@seyi.com", contactAddress: "333014桃園市龜山區南上路446號", extras: { hasCertification: false, certBody: "", hasDesign: true, hasTranslation: true, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/12", condition: "簽約金30%+啟動", amount: 288750, invoiced: true, isFinal: false }, { term: "第2期", month: "115/6", condition: "報告初稿", amount: 131250, invoiced: true, isFinal: false }, { term: "第3期", month: "115/9", condition: "報告完成", amount: 105000, invoiced: false, isFinal: true }], commLogs: [{ date: "8月5日", note: "mail 第三期發票" }] },
+      { id: "act_12", status: "active", closeType: null, contractNo: "台_25-12-292", clientName: "德淵企業股份有限公司", projectType: "ESG永續報告書", period: "2025/12~2026/9 (10)", consultant: "Sandy_包案", specialist: "Sunny 羅靜婷", contactPerson: "KellyH_蕭杏茹", contactPhone: "(02)2299-2121 #1223", contactEmail: "KellyH@texyear.com", contactAddress: "248019新北市五股區五權六路9號3樓", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/12~115/10", condition: "簽約至驗證結果(4期)", amount: 810390, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "中英文報告書完成", amount: 143010, invoiced: false, isFinal: true }], commLogs: [{ date: "115/10/5", note: "mail 第四期發票" }] },
+      { id: "act_13", status: "active", closeType: null, contractNo: "台_25-12-285", clientName: "信立螺絲股份有限公司", projectType: "IATF 16949：2016汽車業品質管理系統", period: "2026/1~2026/6 (6)", consultant: "鍾木華_20", specialist: "Richard 武其融", contactPerson: "林佳伶", contactPhone: "(02) 8209-7646", contactEmail: "hsinli.sunnylin@gmail.com", contactAddress: "333桃園市龜山區萬壽路一段551巷10號", extras: { hasCertification: true, certBody: "亞瑞仕", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/12", condition: "簽約金", amount: 167160, invoiced: true, isFinal: false }, { term: "第2期", month: "115/3", condition: "顧問輔導費", amount: 125370, invoiced: true, isFinal: false }, { term: "第3期", month: "115/6", condition: "驗證結果通知書", amount: 125370, invoiced: false, isFinal: true }], commLogs: [{ date: "3月4日", note: "95550432001310333003 第二期發票紙本+回郵" }] },
+      { id: "act_14", status: "active", closeType: null, contractNo: "台_25-12-299", clientName: "泰碩電子股份有限公司", projectType: "SBTI+GHGP+ESG", period: "2025/12/30~2027/12/30(24)", consultant: "林家弘_包案+李志偉_8", specialist: "Sunny 羅靜婷", contactPerson: "蔡明志 副理", contactPhone: "(02)2656-2658 #158", contactEmail: "chad.tsai@taisol.com", contactAddress: "114台北市內湖區瑞光路302號3樓", extras: { hasCertification: true, certBody: "法標(GHGP)", hasDesign: true, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/12~115/8", condition: "簽約至SBTi承諾書(4期)", amount: 1159200, invoiced: true, isFinal: false }, { term: "第2期", month: "待確認", condition: "通過SBTI審核", amount: 289800, invoiced: false, isFinal: true }], commLogs: [{ date: "9月23日", note: "mail 第四期發票" }] },
+      { id: "act_15", status: "active", closeType: null, contractNo: "台_25-12-301", clientName: "鈦思科技股份有限公司", projectType: "ISO 27001", period: "2026/1~2026/4 (4)", consultant: "丁誌榮_20", specialist: "Richard 武其融", contactPerson: "施淵 cara 經理", contactPhone: "(02)2788-9300 #216", contactEmail: "cara.shih@terasoft.com.tw", contactAddress: "302052新竹縣竹北市復興一街251號13樓之6", extras: { hasCertification: true, certBody: "亞瑞仕", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "114/12~115/5", condition: "初評4期請款完成", amount: 548100, invoiced: true, isFinal: false }, { term: "第2期", month: "116/5", condition: "2027驗證申請送出", amount: 89040, invoiced: false, isFinal: false }, { term: "第3期", month: "117/5", condition: "2028驗證申請送出", amount: 89040, invoiced: false, isFinal: true }], commLogs: [{ date: "3月3日", note: "內稽證書製作完成" }] },
+      { id: "act_16", status: "active", closeType: null, contractNo: "台_26-01-002", clientName: "錩鋼精密科技股份有限公司", projectType: "ISO 13485 醫療器材品質管理系統", period: "2026/2~2026/9 (8)", consultant: "郭文旬_19", specialist: "Cindy 汪芯卉", contactPerson: "劉文謙", contactPhone: "(02)2206-8899", contactEmail: "join@plt.com.tw", contactAddress: "24264新北市新莊區民安西路405號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/1~115/7", condition: "簽約至第4期", amount: 292950, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9", condition: "完成管理審查會議", amount: 32550, invoiced: false, isFinal: true }], commLogs: [{ date: "7月21日", note: "mail 內稽證書(13485)" }] },
+      { id: "act_17", status: "active", closeType: null, contractNo: "台_26-02-029", clientName: "華膳空廚股份有限公司", projectType: "14001驗證", period: "", consultant: "張永成", specialist: "Sunny 羅靜婷", contactPerson: "戴怡芳組長", contactPhone: "(03)354-1000 #5337", contactEmail: "fang.tai@cpcs.com.tw", contactAddress: "338016桃園市蘆竹區海山路二段156巷22號", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/2~115/7", condition: "115年度3期請款完成", amount: 252000, invoiced: true, isFinal: false }, { term: "第2期", month: "116/2~10", condition: "116年度續評3期", amount: 136500, invoiced: false, isFinal: false }, { term: "第3期", month: "117/2~10", condition: "117年度續評3期", amount: 136500, invoiced: false, isFinal: true }], commLogs: [{ date: "7月24日", note: "Mail 第三期發票" }] },
+      { id: "act_18", status: "active", closeType: null, contractNo: "台_26-01-011/12", clientName: "Ubee互動寬頻", projectType: "GHG PROTOCOL / ISO 45001", period: "2026/1~2026/6 (5)", consultant: "翁國鈞_2+林舜修_8 / 藍偉倫", specialist: "Sunny 羅靜婷", contactPerson: "楊佳茹 Joyce", contactPhone: "(03)560-0010#188", contactEmail: "joyce.yang@ubeeinteractive.com", contactAddress: "302082新竹縣竹北市台元一街5號10樓之1", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/1~4", condition: "45001簽約+GHGP前2期", amount: 384993, invoiced: true, isFinal: false }, { term: "第2期", month: "115/8~10", condition: "45001驗證申請與通過", amount: 253355, invoiced: false, isFinal: false }, { term: "第3期", month: "115/10", condition: "GHGP/通過驗證", amount: 92610, invoiced: false, isFinal: true }], commLogs: [{ date: "8月31日", note: "ISO 45001*12張內稽證書寄便利袋" }] },
+      { id: "act_19", status: "active", closeType: null, contractNo: "台_26-05-083", clientName: "Ubee互動寬頻", projectType: "ISO 27001", period: "", consultant: "丁誌榮_19", specialist: "Sunny 羅靜婷", contactPerson: "德懷特 Dwight", contactPhone: "(03)560-0010#180", contactEmail: "dwight.chang@ubeeinteractive.com", contactAddress: "302082新竹縣竹北市台元一街5號10樓之1", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/5~8", condition: "簽約金+四階文件檢視", amount: 267540, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9~10", condition: "管審+提出文審", amount: 202860, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "通過驗證", amount: 88200, invoiced: false, isFinal: true }], commLogs: [{ date: "10月20日", note: "870031728381 內稽證書" }] },
+      { id: "act_20", status: "active", closeType: null, contractNo: "台_26-03-047", clientName: "銘旺科技股份有限公司", projectType: "ESG永續報告書", period: "2026/3~2027/7 (17)", consultant: "楊瑞珠_包案_12w", specialist: "Cindy 汪芯卉", contactPerson: "劉真真 永續長", contactPhone: "0935-978-470", contactEmail: "jenny_liu@abonmax.com.tw", contactAddress: "320016 桃園市中壢區高鐵站前西路一段286號3樓之1", extras: { hasCertification: false, certBody: "", hasDesign: true, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/5", condition: "簽約金", amount: 179550, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9", condition: "完成重大主題鑑別", amount: 179550, invoiced: false, isFinal: false }, { term: "第3期", month: "116/7", condition: "完成美編", amount: 239400, invoiced: false, isFinal: true }], commLogs: [{ date: "5月5日", note: "mail 簽約金發票" }] },
+      { id: "act_21", status: "active", closeType: null, contractNo: "台_26-02-030", clientName: "銘旺科技股份有限公司", projectType: "GHG Protocol", period: "2026/2~2027/6", consultant: "楊宗鴻_30 / 藍偉倫", specialist: "Cindy 汪芯卉", contactPerson: "劉真真 永續長", contactPhone: "(03)433-6666 #100", contactEmail: "jenny_liu@abonmax.com.tw", contactAddress: "320016 桃園市中壢區高鐵站前西路一段286號3樓之1", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/3~5", condition: "簽約金+母公司清冊", amount: 240450, invoiced: true, isFinal: false }, { term: "第2期", month: "115/7~116/3", condition: "合併蒐集+初版清冊", amount: 135450, invoiced: false, isFinal: false }, { term: "第3期", month: "116/4", condition: "子母公司清冊完成", amount: 180600, invoiced: false, isFinal: true }], commLogs: [{ date: "5月6日", note: "mail 第二期發票" }] },
+      { id: "act_22", status: "active", closeType: null, contractNo: "台_26-03-048", clientName: "久勝鋼模股份有限公司", projectType: "14001+14064-1", period: "2026/4~2026/12 (9)", consultant: "何佳玲+翁國鈞", specialist: "Richard 武其融", contactPerson: "程泰鈞", contactPhone: "(02)2676-2353", contactEmail: "", contactAddress: "238025新北市樹林區三俊街199巷14號", extras: { hasCertification: true, certBody: "奧爾德", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/3~7", condition: "簽約金+輔導費", amount: 223650, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9~10", condition: "14001通知書+14064報告", amount: 149100, invoiced: false, isFinal: false }, { term: "第3期", month: "115/11", condition: "第三方驗證費_首年", amount: 25000, invoiced: false, isFinal: true }], commLogs: [{ date: "10月7日", note: "Line 證書電子提供給Richard" }] },
+      { id: "act_23", status: "active", closeType: null, contractNo: "台_26-03-064", clientName: "大地昌興業股份有限公司", projectType: "ESG永續報告書", period: "115/4~115/9 (6)", consultant: "林欣儀_12W", specialist: "Cindy 汪芯卉", contactPerson: "謝睿程", contactPhone: "(03)493-6026", contactEmail: "rick.hsieh@tdcpiping.com", contactAddress: "桃園市平鎮區長安路18之1號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/4~6", condition: "簽約金+重大主題", amount: 292530, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9", condition: "美編完成", amount: 125370, invoiced: false, isFinal: true }], commLogs: [{ date: "6月2日", note: "mail 第二期發票" }] },
+      { id: "act_24", status: "active", closeType: null, contractNo: "台_26-05-085", clientName: "泰碩電子股份有限公司", projectType: "ISO 14067", period: "2026/5~2026/11 (6)", consultant: "楊宗鴻_16", specialist: "Sunny 羅靜婷", contactPerson: "蔡明志 副理", contactPhone: "(02)2656-2658 #158", contactEmail: "chad.tsai@taisol.com", contactAddress: "114台北市內湖區瑞光路302號3樓", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/5", condition: "簽約金", amount: 182700, invoiced: true, isFinal: false }, { term: "第2期", month: "115/7~11", condition: "PCR+碳足跡報告+申請書", amount: 304500, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "驗證結果通知書", amount: 121800, invoiced: false, isFinal: true }], commLogs: [{ date: "5月27日", note: "收到合約寄回" }] },
+      { id: "act_25", status: "active", closeType: null, contractNo: "台_26-05-087", clientName: "禾聯碩股份有限公司", projectType: "ISO 9001：2026 品質管理系統建置", period: "2026/5~2026/8", consultant: "黃美娥_7", specialist: "Sunny 羅靜婷", contactPerson: "王建文 課長", contactPhone: "(03)396-1188 #313705", contactEmail: "jameswang@heran.com.tw", contactAddress: "333001桃園市龜山區文禾路289號9樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/5~7", condition: "簽約至第3期", amount: 99120, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9", condition: "顧問輔導費(尾款)", amount: 24780, invoiced: false, isFinal: true }], commLogs: [{ date: "7月7日", note: "mail 第三期發票" }] },
+      { id: "act_26", status: "active", closeType: null, contractNo: "台_26-05-089", clientName: "優群科技股份有限公司", projectType: "SBTI+GHGP", period: "2026/6~2028/12 (31)", consultant: "林家弘_包案", specialist: "Sunny 羅靜婷", contactPerson: "張永源 經理", contactPhone: "(03)530-2747 #204", contactEmail: "derekchang@argosy.com.tw", contactAddress: "300060 新竹市香山區牛埔南路15之3號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/5~8", condition: "簽約金+訓練表單", amount: 603750, invoiced: true, isFinal: false }, { term: "第2期", month: "116/3~117/3", condition: "內查/承諾/目標設定(4期)", amount: 483000, invoiced: false, isFinal: false }, { term: "第3期", month: "117/12", condition: "通過SBTI審核", amount: 120750, invoiced: false, isFinal: true }], commLogs: [{ date: "11月6日", note: "mail 第二期發票" }] },
+      { id: "act_27", status: "active", closeType: null, contractNo: "台_26_06_127", clientName: "優群科技股份有限公司", projectType: "ISO 45001內訓案", period: "115/6/25", consultant: "翁國鈞*6H", specialist: "Sunny 羅靜婷", contactPerson: "黃婉琪Rainbow", contactPhone: "(03)530-2747 #208", contactEmail: "rainbowhuang@argosy.com.tw", contactAddress: "300060 新竹市香山區牛埔南路15之3號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/6", condition: "內訓費用", amount: 33600, invoiced: true, isFinal: true }], commLogs: [{ date: "6月25日", note: "mail 發票" }] },
+      { id: "act_28", status: "active", closeType: null, contractNo: "台_26-05-103", clientName: "動力科技股份有限公司", projectType: "可信資訊安全評估交換(TISAX)", period: "2026/5~2026/12 (7)", consultant: "杜貴忠／趙俊銘_包案(75W)", specialist: "Sunny 羅靜婷", contactPerson: "林靖馥", contactPhone: "(02)8226-3300 #1303", contactEmail: "Mack.Lin@powerlogic.tw", contactAddress: "235603新北市中和區建一路166號9樓", extras: { hasCertification: true, certBody: "法標", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115.6", condition: "簽約金", amount: 425250, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "內稽訓練完成", amount: 141750, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "取得驗證", amount: 850500, invoiced: false, isFinal: true }], commLogs: [{ date: "6月2日", note: "mail 簽約金發票" }] },
+      { id: "act_29", status: "active", closeType: null, contractNo: "台_26-05-088", clientName: "(鼎新)全智新系統科技股份有限公司", projectType: "ISO 9001", period: "2026/6~2026/11", consultant: "蔡寧_14", specialist: "Cindy 汪芯卉", contactPerson: "Mark", contactPhone: "0912-190-885", contactEmail: "mark.yang@hsz-ipst.com", contactAddress: "", extras: { hasCertification: true, certBody: "亞瑞仕", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/6", condition: "啟動會議", amount: 108150, invoiced: true, isFinal: false }, { term: "第2期", month: "115/9", condition: "完成內稽、管審會議", amount: 64890, invoiced: false, isFinal: false }, { term: "第3期", month: "115/11", condition: "驗證結果通知書", amount: 43260, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_30", status: "active", closeType: null, contractNo: "台_26-05-104", clientName: "艾陽科技股份有限公司", projectType: "ISO 27001+27701", period: "2026/5~2026/12 (8)", consultant: "趙俊銘_包案(38W)", specialist: "Cindy 汪芯卉", contactPerson: "陳姿婷 採購經理", contactPhone: "(02)2218-0545", contactEmail: "retta.chen@ionetworks.co", contactAddress: "231029新北市新店區寶高路30號C棟5樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/6", condition: "簽約金", amount: 178500, invoiced: true, isFinal: false }, { term: "第2期", month: "115/11", condition: "內部稽核訓練", amount: 357000, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "驗證結果通知書", amount: 357000, invoiced: false, isFinal: true }], commLogs: [{ date: "5月26日", note: "mail 簽約金發票" }] },
+      { id: "act_31", status: "active", closeType: null, contractNo: "台_26-05-095", clientName: "大東電業廠股份有限公司", projectType: "ISO 17025 實驗室品質管理系統", period: "2026/5~2026/10 (6)", consultant: "陳喬帆_20", specialist: "Sunny 羅靜婷", contactPerson: "劉宗雄", contactPhone: "(03)481-8138 #322", contactEmail: "doris@tewc.com.tw", contactAddress: "326桃園市楊梅區梅獅路二段349巷3號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/5~11", condition: "簽約金+條文訓練", amount: 252000, invoiced: true, isFinal: false }, { term: "第2期", month: "116/2~4", condition: "內稽+送件審查", amount: 126000, invoiced: false, isFinal: false }, { term: "第3期", month: "116/5", condition: "驗證通過", amount: 42000, invoiced: false, isFinal: true }], commLogs: [{ date: "11月3日", note: "Mail 第二期顧問輔導費" }] },
+      { id: "act_32", status: "active", closeType: null, contractNo: "台_26-06-122", clientName: "遠東百貨股份有限公司", projectType: "ISO 20400：2017 永續採購", period: "2026/6~2027/1 (7)", consultant: "王佩瑛_包案(20W)", specialist: "Sunny 羅靜婷", contactPerson: "謝耀萱 副理", contactPhone: "(02)7727-8168", contactEmail: "hsieh@feds.com.tw", contactAddress: "新北市板橋區新站路16號18樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: true, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/7", condition: "啟動會議", amount: 98700, invoiced: true, isFinal: false }, { term: "第2期", month: "115/10", condition: "內稽人員訓練", amount: 246750, invoiced: false, isFinal: false }, { term: "第3期", month: "116/1", condition: "查證通過", amount: 148050, invoiced: false, isFinal: true }], commLogs: [{ date: "10月2日", note: "98051332045050220001 內稽證書寄出" }] },
+      { id: "act_33", status: "active", closeType: null, contractNo: "台_26-06-113", clientName: "福哥興業股份有限公司", projectType: "ISO 9001", period: "2026/6~2026/10 (5)", consultant: "黃美娥_10", specialist: "Cindy 汪芯卉", contactPerson: "蔡枝蓉", contactPhone: "(02)2202-8766", contactEmail: "favor13@favorunion.com", contactAddress: "新北市新莊區大安路20號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/6~9", condition: "簽約金+完成內稽", amount: 130830, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "驗證結果通知書", amount: 56070, invoiced: false, isFinal: true }], commLogs: [{ date: "9月24日", note: "mail 第二期發票" }] },
+      { id: "act_34", status: "active", closeType: null, contractNo: "台_26-06-115", clientName: "昱鐳應材股份有限公司", projectType: "ISO 14064-1 溫室氣體盤查", period: "115/6~116/3 (10)", consultant: "李志偉_14", specialist: "Cindy 汪芯卉", contactPerson: "何秋燕", contactPhone: "(03)426-8958 #565", contactEmail: "rachel.Ho@eray-tech.com", contactAddress: "桃園市中壢區安東路5號5樓", extras: { hasCertification: true, certBody: "亞瑞仕", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115.6", condition: "簽約金", amount: 62370, invoiced: true, isFinal: false }, { term: "第2期", month: "115.11~116.3", condition: "內稽+清冊+申請(3期)", amount: 242655, invoiced: false, isFinal: false }, { term: "第3期", month: "116.4", condition: "驗證結果通知書", amount: 97125, invoiced: false, isFinal: true }], commLogs: [{ date: "6月15日", note: "mail 簽約金發票" }] },
+      { id: "act_35", status: "active", closeType: null, contractNo: "台_26-06-126", clientName: "中化控股股份有限公司", projectType: "GHGP第三方驗證", period: "2026~2028", consultant: "", specialist: "Sunny 羅靜婷", contactPerson: "林妤清 稽核室", contactPhone: "(02)2312-4200 #3232", contactEmail: "yujing.lin@cenra.com", contactAddress: "100007 台北市中正區襄陽路23號", extras: { hasCertification: true, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/6~7", condition: "2025中化製藥查證(2期)", amount: 299250, invoiced: true, isFinal: false }, { term: "第2期", month: "116~118", condition: "2026~2028年度集團查證(8期)", amount: 1286250, invoiced: false, isFinal: true }], commLogs: [{ date: "7月27日", note: "mail 第二期發票" }] },
+      { id: "act_36", status: "active", closeType: null, contractNo: "台_26-07-144", clientName: "寶禾創能科技股份有限公司", projectType: "ISO 9001", period: "115/8~115/12 (5)", consultant: "黃美娥_10", specialist: "Richard 武其融", contactPerson: "曾仲謙 Vic", contactPhone: "0922-737-276", contactEmail: "VicTseng@baoshin.com", contactAddress: "臺北市中山區植福路308號7樓之3", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/7", condition: "簽約金", amount: 77280, invoiced: true, isFinal: false }, { term: "第2期", month: "115/11", condition: "完成內稽訓練", amount: 57960, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "取得驗證結果通知書", amount: 57960, invoiced: false, isFinal: true }], commLogs: [{ date: "7月17日", note: "mail 簽約金發票" }] },
+      { id: "act_37", status: "active", closeType: null, contractNo: "台_26-07-133", clientName: "瀚荃股份有限公司(鼎新)", projectType: "ISO 42001人工智慧管理系統", period: "2026/7~2027/1 (6)", consultant: "丁誌榮_15+羅國榮_4", specialist: "Sunny 羅靜婷", contactPerson: "許淑美", contactPhone: "(02)2620-1000 #11308", contactEmail: "tracy.hsu@cvilux.com", contactAddress: "25147新北市淡水區中正東路一段3巷9號9樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/7", condition: "42001培訓教材", amount: 178500, invoiced: true, isFinal: false }, { term: "第2期", month: "116/1", condition: "文件管理體系提交(四階)", amount: 178500, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_38", status: "active", closeType: null, contractNo: "台_26-07-134", clientName: "東竹藥品股份有限公司(鼎新)", projectType: "SBTi科學基礎減量專案", period: "2026/07~2029/01", consultant: "林家弘_55W", specialist: "Sunny 羅靜婷", contactPerson: "賴尚譽 經理", contactPhone: "0965-285-565", contactEmail: "laimc@ebp.com.tw", contactAddress: "", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/7", condition: "輔導規劃書", amount: 531183, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "後續量化與SBTi申請(第2~7期)", amount: 1049045, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "通過SBTi審核", amount: 68271, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_39", status: "active", closeType: null, contractNo: "台_26-07-135", clientName: "中化控股股份有限公司(鼎新)", projectType: "GHG Protocol", period: "2026/03~2027/12", consultant: "楊繼泰_10W+楊易真_1", specialist: "Sunny 羅靜婷", contactPerson: "蔣宣倚", contactPhone: "(02)2312-4200 #3291", contactEmail: "kate.chiang@cenra.com", contactAddress: "台北市中正區襄陽路23號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/7~11", condition: "範疇1+2確認與計算說明(2期)", amount: 735000, invoiced: true, isFinal: false }, { term: "第2期", month: "116/1", condition: "巡場完成", amount: 367500, invoiced: false, isFinal: false }, { term: "第3期", month: "116/3", condition: "2026年清冊產出", amount: 367500, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_40", status: "active", closeType: null, contractNo: "台_26_07_140", clientName: "中勤實業股份有限公司", projectType: "GHG Protocol 第三方驗證", period: "", consultant: "", specialist: "Cindy 汪芯卉", contactPerson: "郭睿家 經理", contactPhone: "(03)318-5300 #525", contactEmail: "kelly.kuo@ckplas.com", contactAddress: "桃園市龜山區頂湖一街16號", extras: { hasCertification: true, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "提交驗證申請書", amount: 73500, invoiced: true, isFinal: false }, { term: "第2期", month: "115/10", condition: "取得驗證結果通知書", amount: 73500, invoiced: false, isFinal: true }], commLogs: [{ date: "7月21日", note: "mail 第一期發票" }] },
+      { id: "act_41", status: "active", closeType: null, contractNo: "台_26-08-158", clientName: "遠創智慧股份有限公司", projectType: "ISO 14001", period: "115/7~115/12", consultant: "翁國鈞_16", specialist: "Sunny 羅靜婷", contactPerson: "陳怡農 Bryce Chen", contactPhone: "(02)7710-6666 #6962", contactEmail: "BryceYChen@fetc.net.tw", contactAddress: "220336新北市板橋區新站路16號15樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "簽約金", amount: 65100, invoiced: true, isFinal: false }, { term: "第2期", month: "115/11", condition: "完成內稽訓練", amount: 162750, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "驗證結果通知書", amount: 97650, invoiced: false, isFinal: true }], commLogs: [{ date: "9月8日", note: "mail 簽約金發票提供" }] },
+      { id: "act_42", status: "active", closeType: null, contractNo: "台_26-09-177", clientName: "合晶科技股份有限公司", projectType: "RBA責任商業聯盟準則_內訓", period: "2026/8~2026/11 (3)", consultant: "陳孝倫_包案", specialist: "Sunny 羅靜婷", contactPerson: "蔡宜均 人資副理", contactPhone: "(03) 481-5001 #8215", contactEmail: "jeanyctsai@waferworks.com", contactAddress: "桃園市龍潭區龍園一路100號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/8", condition: "簽約金", amount: 86625, invoiced: false, isFinal: false }, { term: "第2期", month: "115/11", condition: "輔導完成", amount: 86625, invoiced: false, isFinal: true }], commLogs: [{ date: "8月24日", note: "票期30天" }] },
+      { id: "act_43", status: "active", closeType: null, contractNo: "台_26-09-173", clientName: "台灣磊奧科技有限公司", projectType: "ISO 27001:2022資訊安全管理系統", period: "115/9~115/12", consultant: "丁誌榮_20", specialist: "Richard 武其融", contactPerson: "陳正平", contactPhone: "0937-538-088", contactEmail: "stacy@layout.com.tw", contactAddress: "326桃園市楊梅區青年路6號3樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "簽約金", amount: 149100, invoiced: true, isFinal: false }, { term: "第2期", month: "115/11", condition: "完成內部稽核訓練", amount: 111825, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "取得驗證結果通知書", amount: 111825, invoiced: false, isFinal: true }], commLogs: [{ date: "9月1日", note: "mail 簽約金發票" }] },
+      { id: "act_44", status: "active", closeType: null, contractNo: "台_26-09-174", clientName: "大將開發股份有限公司(鼎新)", projectType: "ESG永續報告書+14064-1", period: "", consultant: "李志偉_8", specialist: "Sunny 羅靜婷", contactPerson: "余明德 經理", contactPhone: "(02)2706-9999#5200", contactEmail: "md.yu@tajiang.com.tw", contactAddress: "106045臺北市大安區敦化南路二段71號6樓", extras: { hasCertification: false, certBody: "", hasDesign: true, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "服務確認單", amount: 249375, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "重大主題+ESG定稿(2期)", amount: 199500, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "ESG報告美編定稿", amount: 49875, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_45", status: "active", closeType: null, contractNo: "台_26-09-175", clientName: "實盈股份有限公司", projectType: "ISO 9001:2015品質管理系統", period: "2026/8~2026/12 (5)", consultant: "黃美娥_11", specialist: "Cindy 汪芯卉", contactPerson: "廖梅衿", contactPhone: "(02)2694-7697 #513", contactEmail: "megan@suyin.com", contactAddress: "221009新北市汐止區福德一路377號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "簽約金", amount: 63000, invoiced: true, isFinal: false }, { term: "第2期", month: "115/10", condition: "完成內部稽核訓練", amount: 47250, invoiced: false, isFinal: false }, { term: "第3期", month: "115/11", condition: "完成管理審查會議", amount: 47250, invoiced: false, isFinal: true }], commLogs: [{ date: "9月1日", note: "mail 簽約金發票" }] },
+      { id: "act_46", status: "active", closeType: null, contractNo: "台_26-09-188", clientName: "祥碩科技股份有限公司", projectType: "ISO 56001 創新管理系統", period: "2026/9~2026/12 (4)", consultant: "", specialist: "Cindy 汪芯卉", contactPerson: "王俊傑", contactPhone: "(02)2219-6088分機:5182", contactEmail: "Jerry_Wang@asmedia.com.tw", contactAddress: "231 新北市新店區民權路115號6樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9~11", condition: "簽約金+第2期輔導費", amount: 176400, invoiced: true, isFinal: false }, { term: "第2期", month: "116/1", condition: "顧問輔導費", amount: 58800, invoiced: false, isFinal: false }, { term: "第3期", month: "116/3", condition: "顧問輔導費(尾款)", amount: 58800, invoiced: false, isFinal: true }], commLogs: [{ date: "11月4日", note: "mail 第二期發票" }] },
+      { id: "act_47", status: "active", closeType: null, contractNo: "台_26-09-188(驗)", clientName: "祥碩科技股份有限公司", projectType: "ISO 56001 創新管理系統 驗證", period: "2026/9~2026/12 (4)", consultant: "", specialist: "Cindy 汪芯卉", contactPerson: "王俊傑", contactPhone: "(02)2219-6088分機:5182", contactEmail: "Jerry_Wang@asmedia.com.tw", contactAddress: "231 新北市新店區民權路115號6樓", extras: { hasCertification: true, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "", condition: "提交驗證申請", amount: 154875, invoiced: false, isFinal: false }, { term: "第2期", month: "", condition: "取得驗證結果通知書", amount: 154875, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_48", status: "active", closeType: null, contractNo: "台_26-09-185", clientName: "實盈股份有限公司", projectType: "ISO 14064-1溫室氣體盤查", period: "2026/8~2026/1 (5)", consultant: "", specialist: "Sunny 羅靜婷", contactPerson: "廖梅衿", contactPhone: "(02)2694-7697 #513", contactEmail: "megan@suyin.com", contactAddress: "221009新北市汐止區福德一路377號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9~10", condition: "簽約金+東莞巡場", amount: 170100, invoiced: true, isFinal: false }, { term: "第2期", month: "115/11", condition: "完成內稽", amount: 56700, invoiced: false, isFinal: false }, { term: "第3期", month: "116/1", condition: "完成管審", amount: 56700, invoiced: false, isFinal: true }], commLogs: [{ date: "115/11", note: "mail 第二期發票" }] },
+      { id: "act_49", status: "active", closeType: null, contractNo: "台_26-09-191", clientName: "維庫勒科技有限公司", projectType: "ISO 9001:2015品質管理系統建置", period: "115/9~115/12 (4)", consultant: "黃美娥_10", specialist: "Richard 武其融", contactPerson: "黃詩媛", contactPhone: "(03) 318-7200", contactEmail: "Limong.Huang@vekooler.com", contactAddress: "桃園市龜山區樂善里華亞三路39巷1號二樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "簽約金", amount: 70560, invoiced: true, isFinal: false }, { term: "第2期", month: "115/11", condition: "完成內稽訓練", amount: 52920, invoiced: false, isFinal: false }, { term: "第3期", month: "115/12", condition: "取得驗證結果通知書", amount: 52920, invoiced: false, isFinal: true }], commLogs: [{ date: "9月10日", note: "mail 簽約金發票" }] },
+      { id: "act_50", status: "active", closeType: null, contractNo: "台_26-09-197", clientName: "岳豐科技股份有限公司", projectType: "GHG Protocol溫室氣體盤查", period: "2026/10~2029/3 (30)", consultant: "", specialist: "Sunny 羅靜婷", contactPerson: "潘丞豊", contactPhone: "03-4778846 #1813", contactEmail: "ianpan@cables.com.tw", contactAddress: "32741桃園市新屋區中山東路二段130巷12-9號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "GHGP簽約金30%", amount: 157500, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "後續輔導階段(4期)", amount: 315000, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "通過第三方確信10%", amount: 52500, invoiced: false, isFinal: true }], commLogs: [{ date: "115/9/18", note: "mail 簽約金發票" }] },
+      { id: "act_51", status: "active", closeType: null, contractNo: "台_26-09-196", clientName: "岳豐科技股份有限公司", projectType: "IFRS永續準則專章導入", period: "115/9~118/3 (31)", consultant: "", specialist: "Sunny 羅靜婷", contactPerson: "潘丞豊", contactPhone: "03-4778846 #1813", contactEmail: "ianpan@cables.com.tw", contactAddress: "32741桃園市新屋區中山東路二段130巷12-9號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/9", condition: "IFRS簽約金30%", amount: 409500, invoiced: true, isFinal: false }, { term: "第2期", month: "", condition: "IFRS顧問輔導費(2期)", amount: 682500, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "IFRS顧問輔導費20%", amount: 273000, invoiced: false, isFinal: true }], commLogs: [{ date: "115/9/18", note: "mail 簽約金發票" }] },
+      { id: "act_52", status: "active", closeType: null, contractNo: "台_26-10-205", clientName: "冠坤電子企業股份有限公司(鼎新)", projectType: "ISO 27001:2022資訊安全管理系統", period: "", consultant: "丁誌榮_23", specialist: "Cindy 汪芯卉", contactPerson: "", contactPhone: "", contactEmail: "", contactAddress: "", extras: { hasCertification: true, certBody: "SGS", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/10", condition: "第一期專案規畫書", amount: 210000, invoiced: false, isFinal: false }, { term: "第2期", month: "116/2~3", condition: "第二、三期文件與內稽", amount: 217350, invoiced: false, isFinal: false }, { term: "第3期", month: "116/5", condition: "SGS驗證交付物", amount: 210000, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_53", status: "active", closeType: null, contractNo: "台_26-10-207", clientName: "前鼎光電股份有限公司", projectType: "CRA", period: "", consultant: "孫樂安_包案(12W)", specialist: "Sunny 羅靜婷", contactPerson: "陳凌斐 Caroline", contactPhone: "(03)598-6799 #311", contactEmail: "carolinechen@apacoe.com.tw", contactAddress: "303新竹縣湖口鄉新竹工業區自強路3號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/10", condition: "首期，顧問進駐前付款", amount: 52894, invoiced: false, isFinal: false }, { term: "第2期", month: "", condition: "二期，第一階段報告", amount: 144178, invoiced: false, isFinal: false }, { term: "第3期", month: "", condition: "三期，自我宣告模擬後付款", amount: 144178, invoiced: false, isFinal: true }], commLogs: [] },
+      { id: "act_54", status: "active", closeType: null, contractNo: "台_26-11-226", clientName: "和樁科技股份有限公司", projectType: "ISO 14064-1", period: "2026/11~2027/4 (6)", consultant: "吳光倫_16", specialist: "Cindy 汪芯卉", contactPerson: "劉奕洋", contactPhone: "(02)8752-3311 #2135", contactEmail: "yyliu@aurotek.com", contactAddress: "台北市內湖區洲子街60號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/11", condition: "簽約金", amount: 201600, invoiced: true, isFinal: false }, { term: "第2期", month: "116/3", condition: "產出文件(程序書、清冊)", amount: 151200, invoiced: false, isFinal: false }, { term: "第3期", month: "116/4", condition: "驗證結果通知書", amount: 151200, invoiced: false, isFinal: true }], commLogs: [{ date: "115.11.2", note: "mail 簽約金發票" }] },
+      { id: "act_55", status: "active", closeType: null, contractNo: "台_26-11-233", clientName: "彬松科技股份有限公司(86386539)", projectType: "台灣醫療器材品質管理系統(QMS)", period: "2026/11~2027/4(6)", consultant: "阮俊仁_10", specialist: "Cindy 汪芯卉", contactPerson: "吳嘉文 經理", contactPhone: "(02)2793-2227 #211", contactEmail: "toatecht4@toatechinc.com.tw", contactAddress: "114台北市內湖區新湖一路368號3樓", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/11", condition: "簽約金", amount: 75600, invoiced: true, isFinal: false }, { term: "第2期", month: "115/12~116/2", condition: "顧問輔導費(2期)", amount: 75600, invoiced: false, isFinal: false }, { term: "第3期", month: "116/4", condition: "顧問輔導費(尾款)", amount: 37800, invoiced: false, isFinal: true }], commLogs: [{ date: "11月6日", note: "mail 簽約金" }] },
+      { id: "act_56", status: "active", closeType: null, contractNo: "台_26-11-236", clientName: "鴻睿自動化股份有限公司", projectType: "ISO 9001", period: "115/11~115/12 (2)", consultant: "黃美娥_6", specialist: "Cindy 汪芯卉", contactPerson: "梁興閤經理", contactPhone: "", contactEmail: "purchase@hzauto.com.tw", contactAddress: "", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/11", condition: "簽約金", amount: 36960, invoiced: true, isFinal: false }, { term: "第2期", month: "115/12", condition: "尾款", amount: 55440, invoiced: false, isFinal: true }], commLogs: [{ date: "11月1日", note: "mail 簽約金發票" }] },
+      { id: "act_57", status: "active", closeType: null, contractNo: "台_26-11-239", clientName: "六角國際事業股份有限公司", projectType: "ISO 14064-1", period: "115/11~116/6 (8)", consultant: "黃奕凱_25", specialist: "Cindy 汪芯卉", contactPerson: "葉鼎綸經理", contactPhone: "03-5507750 #6338", contactEmail: "daniel@lakaffa.com.tw", contactAddress: "30274新竹縣竹北市高鐵九路98號", extras: { hasCertification: false, certBody: "", hasDesign: false, hasTranslation: false, hasInternalAuditCert: false, hasBanner: false, note: "" }, billings: [{ term: "第1期", month: "115/11", condition: "簽約金", amount: 130200, invoiced: false, isFinal: false }, { term: "第2期", month: "116/2", condition: "顧問輔導費", amount: 97650, invoiced: false, isFinal: false }, { term: "第3期", month: "116/5", condition: "完成溫盤合併報表盤查", amount: 97650, invoiced: false, isFinal: true }], commLogs: [] }
+    ];
+
+    // 已結案專案（解析自 X-(結案)2025專案管理(妞)_2.xlsx，含自動識別「終止」標籤）
+    const CLOSED_RAW_LIST = [
+      ["台_26-01-005","高安電檢股份有限公司","9001暨45001","2026/3~2026/10 (8)","張勝銘_30","Cindy 汪芯卉","completed",494550],
+      ["台_25-10-245","禾聯碩股份有限公司","ESG+14064-1","2025/10~2026/7 (9)","ESG_曹海英+64_楊易真","Sunny 羅靜婷","completed",913500],
+      ["台_25-06-132","欣技資訊股份有限公司","ISO 45001:2018 職業安全衛生管理系統建置","2025/7~2025/12 (6)","楊繼泰_14","Sunny 羅靜婷","completed",257250],
+      ["台_26-03-051","繹宇數位科技股份有限公司","ISO 27001","2026/3~2026/8(6)","周琳蓁_27","Cindy 汪芯卉","completed",462000],
+      ["台_26-01-024","億光電子工業股份有限公司","ESG永續報告書","2026/1~報告書發行為止","戚衛欣_包案 (22W)","Sunny 羅靜婷","completed",614250],
+      ["台_26-01-010","千富企業有限公司","系統整合","2026/1~2026/6","鄭惟中","Sunny 羅靜婷","completed",380000],
+      ["台_25-11-258","長豐智能科技股份有限公司","ISO 27001 資訊安全管理系統","2026/1~2026/8 (8)","趙俊銘_223,809","Sunny 羅靜婷","completed",685650],
+      ["台_26-09-176","長榮航太科技股份有限公司","永續策略方向、行動與跨部門整合(12H)","9/21~9/22","邱立基+戚衛欣","Sunny 羅靜婷","completed",147525],
+      ["台_25-10-241","堡達實業股份有限公司","ESG+14064-1","2025/10~2026/5 (8)","利錦文_包案","Sandy 曹海英","completed",409500],
+      ["11311-216/17","宏偉電機工業股份有限公司","64+ESG","2024/11~2025/12","利錦文_包案","Sandy 曹海英","completed",1302000],
+      ["台_25_01_008","宏偉電機工業股份有限公司","ISO 45001","2025/2~2025/7","利錦文_包案","Sandy 曹海英","completed",761250],
+      ["台_25-04-053","茂荃股份有限公司(鼎新)","ISO 14064-1 + ESG","2025/4~2026/3 (11)","Paul_8+李志偉_12","Sunny 羅靜婷","completed",748000],
+      ["11311-218","(鼎)上尚科技股份有限公司","ISO 14064-1","2024/12~2025/4 (5)","楊繼泰_8+楊易真_3","Sunny 羅靜婷","completed",485000],
+      ["台_25-12-291","廣積科技股份有限公司","GHG Protocol","2026/1~2026/12 (12)","楊宗鴻_40","Tiffany 黃秋惠","completed",672000],
+      ["台_25-09-226","大將開發股份有限公司(鼎新)","ISO 14064-1暨ESG永續報告書","","ESG_楊瑞珠(包案)+64_楊易真","Sunny 羅靜婷","completed",475000],
+      ["台_25-08-174","倚強科技股份有限公司","ESG永續報告書(續案)+14064-1","","許麗萍_包案","Sunny 羅靜婷","completed",976990],
+      ["台_26-01-020","王座國際餐飲股份有限公司","ESG永續報告書","2026/1~2026/8 (8)","","Richard 武其融","completed",467250],
+      ["台_26-01-021","六角國際事業股份有限公司","ESG永續報告書","2026/1~2026/8 (8)","","Cindy 汪芯卉","completed",467250],
+      ["台_26-05-098","欣榮材料股份有限公司","ISO 9001:2015+14001 第三方驗證","2025/1~2025/8(8)","","Sunny 羅靜婷","completed",110250],
+      ["台_25-11-256","台灣矽科宏晟科技股份有限公司","GHG Protocol溫室氣體盤查協議","2025/11~2026/6","藍偉倫_24","Cindy 汪芯卉","completed",629895],
+      ["台_25-06-133","華膳空廚股份有限公司","ISO 14001:2015環境管理系統","2025/7~2026/Q2","張永成_20","Sunny 羅靜婷","completed",252000],
+      ["台_26-05-097","世大福智科技股份有限公司","27001(TAF)續評","","","Richard 武其融","completed",72450],
+      ["台_25-08-201","全風機電股份有限公司","ISO 9001:2015品質管理系統建置","2025/9~2026/2 (6)","蔡凝_12","Richard 武其融","completed",250950],
+      ["台_25-09-228","上洋產業股份有限公司","14064-1+ESG永續報告書","2025/10~2026/7 (9)","藍偉倫(64)_14+研發中心(ESG)","Richard 武其融","completed",577500],
+      ["台_26-04-071","盛弘醫藥股份有限公司","ISO 14064-1 第三方驗證","2025/7~2026/2 (8)","","Sunny 羅靜婷","completed",580000],
+      ["台_25-08-182","豪威興業有限公司","ISO 9001:2015品質管理系統建置","2025/8~2026/1 (6)","何佳玲_10","Richard 武其融","completed",171990],
+      ["台_25-04-056","奇力速工業股份有限公司","ISO 14001:2015","2025/5~2026/2 (10)","楊繼泰_12","Cindy 汪芯卉","completed",173250],
+      ["11307-126","(鼎)長豐智能科技股份有限公司","ISO 14064+ESG","113/7~114/4 (9M)","Paul*3+Zoey*6/劉芸伊包案","Sunny 羅靜婷","completed",900000],
+      ["台_25-12-293","希鉻鎷光電有限公司","ISO 27001","2025/12~2026/3 (4)","丁致榮_21","Cindy 汪芯卉","completed",425250],
+      ["台_25-07-152","威建企業股份有限公司","ISO 14064-1暨ISO 14067","2025/7~2026/4 (10)","藍偉倫_12+18","Cindy 汪芯卉","completed",388500],
+      ["台_26-01-013","匯盛科技有限公司","27001(迅捷)","2026/1~2026/3","丁誌榮_17","Tiffany 黃秋惠","completed",273000],
+      ["台_26-04-066","信通交通器材股份有限公司","IATF16949內訓","4/14/2026","鍾木華*6H","Richard 武其融","completed",32183],
+      ["台_25-10-239","得邁斯科技股份有限公司","ISO 27001","","丁誌榮_16","Tiffany 黃秋惠","completed",273000],
+      ["台_25-12-284","台灣車輛股份有限公司","ISO 27001","2025/12~2026/4","孫樂安_包案","Richard 武其融","completed",677250],
+      ["台_25-12-289","京程科技股份有限公司","9001 內訓","2026/3 (12H)","何佳玲_4","Richard 武其融","completed",55125],
+      ["台_25-03-032","Ubee互動寬頻","GHG PROTOCOL/ESG/EcoVadis","114.3~114.12(9)","ESG(研發中心)+利+藍","Sunny 羅靜婷","completed",1415400],
+      ["11308-147","(鼎)福比股份有限公司","ISO 14064-1","113/8~114/4 (8)","楊繼泰 8人次","Sunny 羅靜婷","completed",365000],
+      ["台_25-12-274","英業達股份有限公司","改善週","2025/11~2025/12","陳尚志_15次","Tiffany 黃秋惠","completed",300000],
+      ["台_25-03-042","倚強科技股份有限公司","ISO 14064-1 第三方驗證","","","Sunny 羅靜婷","completed",207900],
+      ["台_25-07-160","奇偶科技股份有限公司(鼎新)","14064-1","114/7~115/2","藍偉倫_6","Sunny 羅靜婷","completed",128000],
+      ["11202-004-1","鑫宏益科技有限公司","ISO 13485 驗證費","無","無","Tony 吳啟揚","completed",144762],
+      ["台_25-05-097","天品科技股份有限公司","ISO 9001","114/7~114/12 (6)","蔡寧_11","Cindy 汪芯卉","completed",153300],
+      ["台_25-10-244","華新麗華股份有限公司","企業流程盤點疏理顧問輔導","2025/10~2026/2 (4)","Jessica 陳心媛_8+馬丁_4","Tiffany 黃秋惠","completed",273000],
+      ["台_25-08-185","中勤實業股份有限公司","GHG Protocol溫室氣體盤查協議","2025/8~2026/3 (8)","藍偉倫_18","Cindy 汪芯卉","completed",459900],
+      ["台_25-06-120","盛弘醫藥股份有限公司","ISO 14064-1","2025/7~2026/2 (8)","藍偉倫_13","Sunny 羅靜婷","completed",300000],
+      ["台_25-09-218","采瑨包裝材料有限公司","ISO 14064-1 溫室氣體盤查","2025/10~2025/12 (3)","陳建彰_三家共14人次","Tiffany 黃秋惠","completed",91000],
+      ["台_25-09-218-B","和家實業有限公司","ISO 14064-1 溫室氣體盤查","2025/10~2025/12 (3)","陳建彰_三家共14人次","Tiffany 黃秋惠","completed",91000],
+      ["台_25-09-218-C","晨碩包裝有限公司","ISO 14064-1 溫室氣體盤查","2025/10~2025/12 (3)","陳建彰_三家共14人次","Tiffany 黃秋惠","completed",91000],
+      ["台_25-12-279","帝恩替股份有限公司","ISO 9001","2025/12~2026/3 (3)","黃美娥_10","Richard 武其融","completed",148575],
+      ["台_25-05-096","瀚荃股份有限公司(鼎新)","ISO 14067","2025/6~2026/1 (8)","藍瑋倫_13","Sunny 羅靜婷","completed",514500],
+      ["台_25-06-114","德淵企業股份有限公司","ISO 27001資訊安全管理系統","2025/6~2025/12 (6)","趙俊銘_包案","Sunny 羅靜婷","completed",493500],
+      ["台_25-09-222","中華紙漿股份有限公司","ISCC國際可持續發展和碳認證","2025/8~2025/12","利錦文_包案","Sunny 羅靜婷","completed",611100],
+      ["台_25-07-149","本一科技股份有限公司","ISO 27001暨ISO 27701","2025/7~2025/12 (6)","孫樂安_包案","Sunny 羅靜婷","completed",610000],
+      ["11302-029","東科聲學股份有限公司","ESG 永續報告書","113/7~114/3 (8M)","利錦文+廖倩慧","Sunny 羅靜婷","completed",792000],
+      ["台_25-03-038","艾陽科技股份有限公司","ISO 9001:2015","2025.3~2025.8 (6)","蔡寧_10","Cindy 汪芯卉","completed",197400],
+      ["台_25-05-104","耀勝電子股份有限公司","ISO 14064-1 (補助案)","2025/6~2025/9 (4)","藍偉倫_6","Cindy 汪芯卉","completed",40000],
+      ["台_25-05-098","松鈞工業股份有限公司","ISO 14064-1 (補助案)","2025/5~2025/10 (10)","藍偉倫_11","Cindy 汪芯卉","completed",76000],
+      ["11306-112","協易機械工業股份有限公司","ESG企業永續報告書","113/8~114/7 (12M)","利錦文_包案+廖倩慧_10次","Sunny 羅靜婷","completed",758000],
+      ["台_25-04-063","協易機械工業股份有限公司","企業內部訓練","7/29+","利錦文/邱立基+戚衛欣","Sunny 羅靜婷","completed",136500],
+      ["11303-039","華星光通科技股份有限公司","14064-1+SBTI","2024/4~2025/9 (17)","利錦文_50%","Sandy 曹海英","completed",783116],
+      ["台_25-06-125","亞德光機股份有限公司","ISO 14064-1(補助案)","2025/6~2025/11 (6)","藍偉倫_11","Cindy 汪芯卉","completed",116000],
+      ["台_25-05-076","潤鉅實業有限公司","ISO 14064-1 補助案","2025/5~2025/9 (5)","陳建彰_10","Tiffany 黃秋惠","completed",40000],
+      ["台_25-01-007","(鼎)中國化學製藥股份有限公司","ISO 14064-1","114/2~115/2 (12)","Paul_21","Sunny 羅靜婷","completed",667000],
+      ["台_25-08-183","信通交通器材股份有限公司","IATF16949六大工具和內部稽核培訓","113/4~113/5","鍾木華 24小時","Richard 武其融","completed",144948],
+      ["11312-230","天弘化學股份有限公司","ESG 永續報告書","2025/1~2025/10 (10)","利錦文_50%","Tiffany 黃秋惠","completed",378000],
+      ["台_25-03-033","全科綜電股份有限公司","ISO 14064-1","2025.3~2025.9 (7)","藍偉倫 8+2","Cindy 汪芯卉","completed",116000],
+      ["台_25-03-051","捷德運動股份有限公司","ISO 27001:2022","2025/4~2025/10 (7)","張寬增_24","Tiffany 黃秋惠","completed",299985],
+      ["11308-162","全球智力人力開發有限公司","ESG永續報告書/RBA(RBA合約終止)","2024/9-2025/6","","Sandy 曹海英","terminated",375119],
+      ["11307-136/37","(鼎)天良生物科技企業股份有限公司","ISO 14064-1+ESG","2024/9-2025/6 (9)","64_Anan_12+ESG_許麗萍","Sandy 曹海英","completed",696000],
+      ["台_25-05-091","財團法人商業發展研究院","(北、中、南)碳盤查、碳足跡課程","2025/6~2025/9 (4)","LEO*72H","Tiffany 黃秋惠","completed",441000],
+      ["11312-234","康普材料科技股份有限公司","ESG永續報告書","2024/12~2025/6 (7)","利錦文_包案","Tiffany 黃秋惠","completed",488250],
+      ["台_25-05-093","定揚科技股份有限公司","ISO 14064-1","2025/6~2025/8 (3)","陳建彰_12","Tiffany 黃秋惠","completed",80000],
+      ["台_25-02-028","龍榕金屬有限公司","ISO 14064-1(補助案)","2025.3~2025.9 (6)","藍偉倫","Cindy 汪芯卉","completed",100000],
+      ["台_25-07-159","臺灣智靈管理顧問有限公司","人事制度顧問輔導","2025/7 (1)","陳秋菊_5","Tiffany 黃秋惠","completed",94500],
+      ["11309-169","萬旭電業股份有限公司","ESG永續報告書","113/11~114/7 (9m)","利錦文(包案)+廖倩慧_10","Sunny 羅靜婷","completed",651000],
+      ["台_25-03-040","實盈股份有限公司","EcoVadis","","李志偉_6+King_4","Sunny 羅靜婷","completed",273000],
+      ["11305-088","禾瑞亞科技股份有限公司","ISO 14064-1 + ESG","","64-楊繼泰(8)/ESG-許麗萍","Sunny 羅靜婷","completed",673000],
+      ["11312-235","安波科技股份有限公司","14001:2015+45001:2018","2024/12~2025/6 (7)","Paul_18","Sunny 羅靜婷","completed",278250],
+      ["11312-220","億光電子工業股份有限公司","ESG永續報告書","2024/12~2025/6 (7)","邱立基+戚衛欣 包案","Sunny 羅靜婷","completed",1047900],
+      ["台_25-02-018","(鼎)大山電線電纜股份有限公司","ESG + ISO 14064-1","2025/1~2025/6 (6M)","E/楊瑞珠+64/James","Sunny 羅靜婷","completed",799999],
+      ["台_25-08-176","立凱電能科技股份有限公司","ISO 14067 碳足跡專案","線上授課","鄭惟中_6","Sunny 羅靜婷","completed",95000],
+      ["台_25-03-039","麒翰科技工程有限公司","ISO 45001:2018職業安全衛生管理系統","2025/5~2025/12 (7)","張永成_16","Sandy 曹海英","completed",257250],
+      ["11310-194","貝倫企業股份有限公司","ISO 14064-1","2024/11~2025/4 (5)","王坤讓_9","Sandy 曹海英","completed",162750],
+      ["11310-203","陞達科技股份有限公司","ESG永續報告書","2025/11~2025/6 (8)","利錦文_包案","Sandy 曹海英","completed",462000],
+      ["11312-228","(鼎)由田新技股份有限公司","ESG 永續報告書","2024/12~2025/7 (7)","楊瑞珠_包案+楊易真_6","Sunny 羅靜婷","completed",410000],
+      ["11306-106","(鼎)禾聯碩股份有限公司","ESG+ISO 14064-1","113/7~114/6","楊繼泰10人次/劉芸伊包案","Sunny 羅靜婷","completed",1228000],
+      ["11111-086","(鼎新)倚強科技股份有限公司","ESG 永續報告書","113/8~114/6 (10)","許麗萍+龍華團隊","Sunny 羅靜婷","completed",1175000],
+      ["11312-237","祥碩科技股份有限公司","RBA責任商業聯盟準則","2025/1~2025/6 (6)","利錦文_包案","Cindy 汪芯卉","completed",294000],
+      ["台_25-04-062","雷酷資訊科技有限公司","薪酬與KPI輔導","2025/4~2025/7 (4)","陳秋菊_13","Tiffany 黃秋惠","completed",240000],
+      ["11312-233","全風機電股份有限公司","第三方驗證14064","","","Sunny 羅靜婷","completed",123900],
+      ["11312-236","(鼎)欣榮材料股份有限公司","ISO 9001:2015+14001","2025/1~2025/8(8)","王昆讓_22","Sunny 羅靜婷","completed",435000],
+      ["11304-064","鉅祥企業股份有限公司","ESG企業永續報告書","113/7~114/4 (9M)","楊宗鴻_10+廖倩慧_8","Sunny 羅靜婷","completed",692001],
+      ["11305-078","(鼎)盛弘醫藥股份有限公司","ESG永續報告書+64","113/7~114/4 (10M)","劉芸伊 包案","Sunny 羅靜婷","completed",540000],
+      ["11311-208","上特立股份有限公司","ISO 14067","2024/11~2025/4 (6)","楊繼泰_10","Sunny 羅靜婷","completed",472000],
+      ["11306-118","坤紀企業股份有限公司","ISO 9001 (專案終止/暫停)","7-8月","張勝銘 4人次","Tony 吳啟揚","terminated",17000],
+      ["11308-148","(鼎)大將開發股份有限公司","14064-1 + ESG","113/8~114/5 (9)","Zoey6+Paul*2+楊瑞珠","Sunny 羅靜婷","completed",738000],
+      ["台_25-05-077","太平洋崇光百貨股份有限公司","ISO 20400 供應商稽核顧問費","待定","利錦文_50%","Sunny 羅靜婷","completed",90000],
+      ["11212-141","精拓科技股份有限公司","ESG 永續報告書","113/7~114/5 (10M)","許麗萍_包案","Sunny 羅靜婷","completed",428000],
+      ["11305-098/222","動力科技(股)公司","ESG / 64-1驗證","113/7~114/5 (10)","利錦文+廖倩慧","Sunny 羅靜婷","completed",1001453],
+      ["11304-063","三商電腦股份公司(鼎新)","ISO 14064-1","6個月","楊宗鴻 Leo (10人次)","Sunny 羅靜婷","completed",362000],
+      ["11306-110","(鼎)攸泰科技股份有限公司","14064-1","113/6~114/4 (10)","楊繼泰_9人次","Sunny 羅靜婷","completed",488000],
+      ["11309-180","(鼎)耀穎光電股份有限公司","ISO 14064-1+ESG","2024/9~2025/5","64_Alan+ESG_劉芸伊","Tiffany 黃秋惠","completed",773480],
+      ["台_25-03-041","耀勝電子股份有限公司-汐止廠","9001+14001","2025/3~2025/5 (3)","張永成_14","Cindy 汪芯卉","completed",304500],
+      ["11310-185","李洲科技股份有限公司","ESG永續報告書","2024/10~2025/6 (9)","利錦文+廖倩慧","Sandy 曹海英","completed",546000],
+      ["11310-204","偉詮電子股份有限公司","ESG永續報告書","2024/11~2025/6 (8)","利錦文_包案","Sandy 曹海英","completed",535498],
+      ["11308-161","亦良有限公司","ISO 14001:2015","2024/10~2025/2 (5)","張永成 14人次","Tony 吳啟揚","completed",157500],
+      ["11304-067","新傑雅股份有限公司","ISO 9001:2015","2024/04~2024/10(6)","楊繼泰 12人次","Tony 吳啟揚","completed",133332],
+      ["11305-095","(補助)全風機電股份有限公司","ISO 14064-1","113/5~113/9 (5)","楊繼泰*2+楊易真*6","Sunny 羅靜婷","completed",110476],
+      ["11305-084","聚鼎科技股份有限公司","ISO 27001","113/5~113/12 (7)","張寬增 38人次","Tony 吳啟揚","completed",668100],
+      ["11304-060","納諾集團","ISO 14064+ISO 14067","113/1-113/8","徐楊康 46人次","Tony 吳啟揚","completed",1400000],
+      ["11309-172","駿星企業有限公司","9001+64","2024/9~2025/5","王昆讓_24","Tiffany 黃秋惠","completed",459900],
+      ["11211-130","堡達實業股份有限公司","14064+ESG","2023/11~2025/5","利錦文_50%","Sandy 曹海英","completed",1335600],
+      ["11305-077","中華紙漿股份有限公司","ISO 13065生物能源永續性標準","2024/4~2024/9 (5)","利錦文 (包案)","Sunny 羅靜婷","completed",1006803],
+      ["11308-155","新光紡織股份有限公司","ISO 14064-1","2024/7-2025/2 (7)","楊宗鴻_14","Sandy 曹海英","completed",265646],
+      ["11303-047","太平洋崇光百貨股份有限公司","ISO 20400","113/3-113/10","利錦文 (50%)","Sunny 羅靜婷","completed",730000],
+      ["11307-144","台灣浩鼎生技股份有限公司","營運持續計畫(BCP)","113/8~113/12 (4M)","趙俊銘_包案","Sunny 羅靜婷","completed",485000],
+      ["11304-066-1","泰碩電子股份有限公司(鼎新)","ISO 14064-1 (台灣)","113/4~113/10 (6M)","楊繼泰 10人次","Sunny 羅靜婷","completed",450000],
+      ["11304-066-2","泰碩電子股份有限公司(鼎新)","ISO 14064-1 (海外)","113/4~113/10 (6M)","李志偉 18人次","Sunny 羅靜婷","completed",323000],
+      ["11312-236-KPI","進聯工業股份有限公司","KPI","","","Sandy 曹海英","completed",176400],
+      ["11307-143","新秀波磁能股份有限公司","FMEA失能模式及效應分析","","鍾木華 6H","Tony 吳啟揚","completed",31904],
+      ["11305-090","鈺太科技(股)有限公司","ESG(續案)","113/5~113/9 (5)","劉芸伊 24人次","Avery 彭勗堯","completed",250000],
+      ["11303-045","中日合成化學股份有限公司","ESG維護案(第二年)","113/3-113/6","利錦文(包案7.5萬)","Sunny 羅靜婷","completed",173250],
+      ["11304-057","中華紙漿股份有限公司","企業內訓","4/3","李志偉 1人次","Sunny 羅靜婷","completed",19000],
+      ["11305-076","信通交通器材股份有限公司","IATF16949五大工具和內稽培訓","113/4~113/5","鍾木華 21小時","Tony 吳啟揚","completed",114542],
+      ["11306-108","慶豐氣體有限公司","ISO 9001:2015","113/6~113/8 (3M)","黃美娥 10人次","Tony 吳啟揚","completed",136189],
+      ["11305-094","冠德國際科技(股)公司","ISO 14067","113/5~113/12 (7M)","楊繼泰+楊易真+利錦文","Sunny 羅靜婷","completed",630000],
+      ["11212-133","(鼎)攸泰科技股份有限公司","ESG永續報告書","112/12-113/7","劉芸伊 28人次","Sunny 羅靜婷","completed",693606],
+      ["11304-073","神基科技股份有限公司","ISO 50001 教育訓練","113/5~113/12 (7)","徐楊康 2人次","Avery 彭勗堯","completed",34000],
+      ["11303-032","易達通科技股份有限公司","ISO 9001:2015","113/03-113/07","張永成","Tony 吳啟揚","completed",143998],
+      ["11308-164","家碩科技股份有限公司","ESG 永續報告書 (終止合約)","113/8~114/6 (11)","許麗萍_包案","Sunny 羅靜婷","terminated",212625],
+      ["11309-168","台灣港建股份有限公司","ISO14064-1 (補助案)","113/8~114/2 (7)","Alan_14人次","Sunny 羅靜婷","completed",80000],
+      ["11312-231","杏一醫療用品股份有限公司","ESG 永續報告書 英文美編","","","Sandy 曹海英","completed",36800],
+      ["11305-103","惟達交通運輸股份有限公司","ISO 9001","113/5~113/8","張永成 10人次","Tony 吳啟揚","completed",136189],
+      ["11304-069","晉泰科技(股)公司","ISO 14064-1","113/04~113/12 (8)","楊宗鴻 14人次","Avery 彭勗堯","completed",188571],
+      ["11304-072","達運精密工業股份有限公司","ISO 27001內訓","113/5~113/12 (7)","孫樂安 4人次","Avery 彭勗堯","completed",0],
+      ["11310-187","(鼎)星通資訊股份有限公司","ISO 27001:2022","2024/10~2025/4(7)","張寬增_36","Tony 吳啟揚","completed",525000],
+      ["11310-186","芯測科技股份有限公司","ISO 27001:2022","2024/10~2025/4(7)","張寬增_36","Tony 吳啟揚","completed",519750],
+      ["11310-195","查爾斯科技有限公司","ISO 9001:2015","2024/10~2025/6(8)","張勝銘_18","Avery 彭勗堯","completed",189000],
+      ["11310-183","馬祖航空站","ISO 14064-1","2024/10~2027/10(36)","劉建中_36人次","Avery 彭勗堯","completed",0],
+      ["11308-163","耐思尼股份有限公司(鼎新)","ISO 27001","113/8~114/3","張寬增_31","Avery 彭勗堯","completed",442857],
+      ["11306-120","土地銀行","ISO 50001","113/6~113/12 (6M)","劉建中 35人次","Avery 彭勗堯","completed",0],
+      ["11303-048","奇偶科技股份有限公司(鼎新)","14064-1","113/3-113/8","楊繼泰 8人次","Sunny 羅靜婷","completed",225000]
+    ];
+
+    const INITIAL_CLOSED_PROJECTS = CLOSED_RAW_LIST.map((r, i) => ({
+      id: "cls_" + String(i + 1).padStart(3, "0"),
+      status: "closed",
+      closeType: r[6],
+      contractNo: r[0],
+      clientName: r[1],
+      projectType: r[2],
+      period: r[3],
+      consultant: r[4],
+      specialist: r[5],
+      contactPerson: "",
+      contactPhone: "",
+      contactEmail: "",
+      contactAddress: "",
+      extras: {
+        hasCertification: false,
+        certBody: "",
+        hasDesign: false,
+        hasTranslation: false,
+        hasInternalAuditCert: false,
+        hasBanner: false,
+        note: r[7] === 0 ? "原結案總表未記載請款金額" : (r[0].startsWith("台_25-09-218") ? "聯合輔導三家共用合約台_25-09-218（采瑨包裝／和家實業／晨碩包裝）" : "")
+      },
+      billings: r[7] > 0 ? [{ term: "第1期", month: "已結案", condition: "全案請款結清", amount: r[7], invoiced: true, isFinal: true }] : [],
+      commLogs: r[6] === "terminated" ? [{ date: "已歸檔", note: "[終止輔導] 原結案清冊標註為終止合約／暫停" }] : []
+    }));
+
+    const INITIAL_PROJECTS = [...INITIAL_ACTIVE_PROJECTS, ...INITIAL_CLOSED_PROJECTS];
+
+    let appState = {
+      projects: [],
+      specialists: [...DEFAULT_SPECIALISTS],
+      accounts: [...DEFAULT_ACCOUNTS],
+      gasUrl: "",
+      loggedInUser: null
+    };
+
+    let currentStatusTab = "active";       // 'active' | 'closed' | 'all'
+    let currentClosedSubFilter = "all";    // 'all' | 'completed' | 'terminated'
+    let currentViewName = "overview";      // 'overview' | 'settings'
+    let editingProjectDraft = null;
+    let isCreatingNewProject = false;
+    let genericConfirmAction = null;
+
+    function loadAppState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            appState = {
+              projects: Array.isArray(parsed.projects) ? parsed.projects : [...INITIAL_PROJECTS],
+              specialists: Array.isArray(parsed.specialists) && parsed.specialists.length ? parsed.specialists : [...DEFAULT_SPECIALISTS],
+              accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : [...DEFAULT_ACCOUNTS],
+              gasUrl: typeof parsed.gasUrl === "string" ? parsed.gasUrl : "",
+              loggedInUser: parsed.loggedInUser || null
+            };
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load app state:", err);
+      }
+
+      appState = {
+        projects: [...INITIAL_PROJECTS],
+        specialists: [...DEFAULT_SPECIALISTS],
+        accounts: [...DEFAULT_ACCOUNTS],
+        gasUrl: "",
+        loggedInUser: null
+      };
+      saveAppState();
+    }
+
+    function saveAppState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (err) {
+        console.error("Failed to save app state:", err);
+        showToast("儲存本機資料時發生錯誤", "error");
+      }
+    }
+
+    function resetDataToInitial(clearAll = false) {
+      appState.projects = clearAll ? [] : [...INITIAL_PROJECTS];
+      saveAppState();
+      renderAllOverview();
+    }
+
+    // ==================== 二、工具函式與提示訊息 ====================
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatCurrency(num) {
+      const n = Number(num) || 0;
+      return "$" + n.toLocaleString("en-US");
+    }
+
+    function getTodayDateStr() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}/${m}/${d}`;
+    }
+
+    function showToast(message, type = "success") {
+      const el = document.getElementById("toastNotification");
+      const msgEl = document.getElementById("toastMessage");
+      const dotEl = document.getElementById("toastIndicator");
+      if (!el || !msgEl) return;
+
+      msgEl.textContent = message;
+      if (dotEl) {
+        dotEl.className = "w-2.5 h-2.5 rounded-full shrink-0 " + (
+          type === "error" ? "bg-rose-400" :
+          type === "warning" ? "bg-amber-400" :
+          "bg-emerald-400"
+        );
+      }
+
+      el.classList.remove("hidden");
+      clearTimeout(window.__aheadToastTimer);
+      window.__aheadToastTimer = setTimeout(() => {
+        el.classList.add("hidden");
+      }, 3200);
+    }
+
+    // ==================== 三、登入與登出控制 ====================
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const u = document.getElementById("loginUser").value.trim();
+      const p = document.getElementById("loginPass").value.trim();
+      const errEl = document.getElementById("loginErrorMsg");
+
+      const account = appState.accounts.find(
+        acc => acc.username.toLowerCase() === u.toLowerCase() && acc.password === p
+      );
+
+      if (!account) {
+        errEl.classList.remove("hidden");
+        return;
+      }
+
+      errEl.classList.add("hidden");
+      appState.loggedInUser = {
+        username: account.username,
+        displayName: account.displayName
+      };
+      saveAppState();
+      enterMainSystem();
+      showToast(`歡迎登入，${account.displayName}`);
+    });
+
+    function enterMainSystem() {
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("appScreen").classList.remove("hidden");
+      const badge = document.getElementById("currentUserBadge");
+      if (badge && appState.loggedInUser) {
+        badge.textContent = `登入者：${appState.loggedInUser.displayName || appState.loggedInUser.username}`;
+      }
+      switchView(currentViewName || "overview");
+    }
+
+    function logout() {
+      appState.loggedInUser = null;
+      saveAppState();
+      document.getElementById("loginUser").value = "";
+      document.getElementById("loginPass").value = "";
+      document.getElementById("loginErrorMsg").classList.add("hidden");
+      document.getElementById("appScreen").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+      showToast("您已安全登出系統");
+    }
+
+    // ==================== 四、主視圖切換 ====================
+    function switchView(view) {
+      currentViewName = view === "settings" ? "settings" : "overview";
+      const overviewEl = document.getElementById("overviewView");
+      const settingsEl = document.getElementById("settingsView");
+      const navOverviewBtn = document.getElementById("navOverviewBtn");
+      const navSettingsBtn = document.getElementById("navSettingsBtn");
+
+      if (currentViewName === "settings") {
+        overviewEl.classList.add("hidden");
+        settingsEl.classList.remove("hidden");
+        navSettingsBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-2xs transition";
+        navOverviewBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+        renderSettingsView();
+      } else {
+        settingsEl.classList.add("hidden");
+        overviewEl.classList.remove("hidden");
+        navOverviewBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-2xs transition";
+        navSettingsBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+        renderAllOverview();
+      }
+    }
+
+    // ==================== 五、狀態頁籤與篩選控制 ====================
+    function setStatusTab(tab) {
+      currentStatusTab = tab;
+      const activeBtn = document.getElementById("tabActiveBtn");
+      const closedBtn = document.getElementById("tabClosedBtn");
+      const allBtn = document.getElementById("tabAllBtn");
+      const closedBar = document.getElementById("closedSubFilterBar");
+
+      const baseClass = "px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+      const selectedClass = "px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-indigo-600 text-white shadow-xs transition";
+
+      activeBtn.className = tab === "active" ? selectedClass : baseClass;
+      closedBtn.className = tab === "closed" ? selectedClass : baseClass;
+      allBtn.className = tab === "all" ? selectedClass : baseClass;
+
+      closedBar.classList.toggle("hidden", tab !== "closed");
+      renderAllOverview();
+    }
+
+    function setClosedSubFilter(sub) {
+      currentClosedSubFilter = sub;
+      const allBtn = document.getElementById("subClosedAllBtn");
+      const compBtn = document.getElementById("subClosedCompletedBtn");
+      const termBtn = document.getElementById("subClosedTerminatedBtn");
+
+      allBtn.className = sub === "all"
+        ? "px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-white transition"
+        : "px-3 py-1 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition";
+
+      compBtn.className = sub === "completed"
+        ? "px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-white transition"
+        : "px-3 py-1 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition";
+
+      termBtn.className = sub === "terminated"
+        ? "px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white transition"
+        : "px-3 py-1 rounded-lg text-xs font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 transition";
+
+      renderAllOverview();
+    }
+
+    function clearSearchInput() {
+      document.getElementById("searchInput").value = "";
+      renderProjectsTable();
+    }
+
+    function resetAllFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("billingFilterSelect").value = "all";
+      currentClosedSubFilter = "all";
+      setClosedSubFilter("all");
+      renderProjectsTable();
+    }
+
+    function updateTabCounts() {
+      const activeCount = appState.projects.filter(p => p.status === "active").length;
+      const closedCount = appState.projects.filter(p => p.status === "closed").length;
+      const totalCount = appState.projects.length;
+
+      document.getElementById("tabActiveBtn").textContent = `進行中專案 (${activeCount})`;
+      document.getElementById("tabClosedBtn").textContent = `已結案專案 (${closedCount})`;
+      document.getElementById("tabAllBtn").textContent = `全部專案 (${totalCount})`;
+    }
+
+    // ==================== 六、專案總表與業務分組區塊渲染 ====================
+    function renderAllOverview() {
+      updateTabCounts();
+      renderProjectsTable();
+    }
+
+    function renderProjectsTable() {
+      const container = document.getElementById("specialistBlocksContainer");
+      const emptyEl = document.getElementById("emptyProjectsState");
+      const emptyMsgEl = document.getElementById("emptyProjectsMsg");
+      const emptyResetBtn = document.getElementById("emptyResetFilterBtn");
+      const kw = document.getElementById("searchInput").value.trim().toLowerCase();
+      const billingFilter = document.getElementById("billingFilterSelect").value;
+
+      document.getElementById("clearSearchBtn").classList.toggle("hidden", kw === "");
+
+      const filtered = appState.projects.filter(p => {
+        // 1. 狀態頁籤篩選
+        if (currentStatusTab === "active" && p.status !== "active") return false;
+        if (currentStatusTab === "closed") {
+          if (p.status !== "closed") return false;
+          if (currentClosedSubFilter === "completed" && p.closeType === "terminated") return false;
+          if (currentClosedSubFilter === "terminated" && p.closeType !== "terminated") return false;
+        }
+
+        // 2. 請款狀態篩選（系統預設最後一筆請款就是尾款）
+        const billings = p.billings || [];
+        const lastIdx = billings.length - 1;
+        if (billingFilter === "has_uninvoiced") {
+          if (!billings.some((b, idx) => !b.invoiced && idx !== lastIdx)) return false;
+        } else if (billingFilter === "has_final") {
+          if (!billings.some((b, idx) => !b.invoiced && idx === lastIdx)) return false;
+        } else if (billingFilter === "all_invoiced") {
+          if (billings.length === 0 || !billings.every(b => b.invoiced)) return false;
+        }
+
+        // 3. 關鍵字搜尋
+        if (kw) {
+          const hay = [
+            p.contractNo,
+            p.clientName,
+            p.projectType,
+            p.specialist,
+            p.consultant,
+            p.period,
+            p.contactPerson,
+            p.contactPhone
+          ].join(" ").toLowerCase();
+          if (!hay.includes(kw)) return false;
+        }
+
+        return true;
+      });
+
+      document.getElementById("tableFooterCount").textContent =
+        `顯示 ${filtered.length} 筆專案`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = "";
+        emptyEl.classList.remove("hidden");
+        if (appState.projects.length === 0) {
+          emptyMsgEl.textContent = "目前尚無專案資料，可點擊右上角「+ 新增專案」或提供 Excel 檔案匯入";
+          emptyResetBtn.classList.add("hidden");
+        } else {
+          emptyMsgEl.textContent = "找不到符合篩選條件的專案資料";
+          emptyResetBtn.classList.remove("hidden");
+        }
+        return;
+      }
+
+      emptyEl.classList.add("hidden");
+
+      // 依業務（負責專企）分組呈現在各獨立區塊中（無需逐一點選業務）
+      const orderedSpecialists = [...appState.specialists];
+      filtered.forEach(p => {
+        const sp = (p.specialist || "").trim() || "未指定專企";
+        if (!orderedSpecialists.includes(sp)) {
+          orderedSpecialists.push(sp);
+        }
+      });
+
+      const blocksHtml = [];
+      orderedSpecialists.forEach(spName => {
+        const spProjects = filtered.filter(p => {
+          const sp = (p.specialist || "").trim() || "未指定專企";
+          return sp === spName;
+        });
+
+        // 若該業務在目前篩選條件下無專案，則隱藏該區塊
+        if (spProjects.length === 0) return;
+
+        const rowsHtml = spProjects.map(p => buildProjectRowHtml(p)).join("");
+
+        blocksHtml.push(`
+          <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- 業務區塊標題列（無括號內容） -->
+            <div class="px-4 sm:px-6 py-3.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-500 text-white font-extrabold text-xs">
+                  ${escapeHtml(spName.charAt(0))}
+                </span>
+                <h3 class="text-sm sm:text-base font-extrabold tracking-wide">
+                  ${escapeHtml(spName)}
+                </h3>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-white/10 text-indigo-200 text-xs font-bold">
+                ${spProjects.length} 筆專案
+              </span>
+            </div>
+
+            <!-- 業務專案表格（刪除負責專企列、刪除欄位標題括號、隱藏聯絡窗口與電話、期數純數字） -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse min-w-[920px]">
+                <thead>
+                  <tr class="bg-slate-100 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 tracking-wider">
+                    <th class="py-3 px-4 w-28">狀態</th>
+                    <th class="py-3 px-3 w-36">合約編號</th>
+                    <th class="py-3 px-3 min-w-[200px]">客戶名稱</th>
+                    <th class="py-3 px-3 min-w-[190px]">案別 / 輔導項目</th>
+                    <th class="py-3 px-3 w-36">顧問師</th>
+                    <th class="py-3 px-3 min-w-[220px]">請款進度</th>
+                    <th class="py-3 px-4 w-32 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs sm:text-sm">
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        `);
+      });
+
+      container.innerHTML = blocksHtml.join("");
+    }
+
+    function buildProjectRowHtml(p) {
+      const isTerminated = p.status === "closed" && p.closeType === "terminated";
+      const isClosed = p.status === "closed";
+
+      let statusBadge = "";
+      if (isTerminated) {
+        statusBadge = `<span class="badge-terminated inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-extrabold whitespace-nowrap">⛔ 終止輔導</span>`;
+      } else if (isClosed) {
+        statusBadge = `<span class="badge-closed inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap">已結案</span>`;
+      } else {
+        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">進行中</span>`;
+      }
+
+      // 請款期數色塊：純數字 1 2 3 4，最後一筆未開立發票自動認定為尾款（膚色）
+      const billings = p.billings || [];
+      const lastIdx = billings.length - 1;
+      const billingPills = billings.map((b, idx) => {
+        const isLast = idx === lastIdx;
+        let cls = "badge-uninvoiced";
+        if (b.invoiced) cls = "badge-invoiced";
+        else if (isLast) cls = "badge-final";
+
+        const periodNum = idx + 1;
+        return `<button type="button" onclick="openProjectDetailModal('${p.id}')"
+          class="${cls} inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-md text-xs font-extrabold shadow-2xs hover:opacity-90 transition">
+          ${periodNum}
+        </button>`;
+      }).join("");
+
+      const rowBgClass = isTerminated
+        ? "bg-rose-50/40 hover:bg-rose-50/80"
+        : isClosed
+          ? "bg-slate-50/60 hover:bg-slate-100/70"
+          : "hover:bg-indigo-50/40";
+
+      const actionBtns = p.status === "active"
+        ? `<div class="inline-flex items-center justify-end gap-1.5">
+            <button type="button" onclick="openProjectDetailModal('${p.id}')"
+              class="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition">
+              明細
+            </button>
+            <button type="button" onclick="openProjectDetailModal('${p.id}'); openTerminateConfirmModal();"
+              class="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition">
+              終止
+            </button>
+          </div>`
+        : `<button type="button" onclick="openProjectDetailModal('${p.id}')"
+            class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition">
+            明細
+          </button>`;
+
+      return `<tr class="${rowBgClass} transition">
+        <td class="py-3.5 px-4 align-middle">${statusBadge}</td>
+        <td class="py-3.5 px-3 align-middle font-mono text-xs text-slate-600 font-semibold whitespace-nowrap">${escapeHtml(p.contractNo) || "—"}</td>
+        <td class="py-3.5 px-3 align-middle">
+          <div class="font-extrabold text-slate-900 leading-snug">${escapeHtml(p.clientName)}</div>
+        </td>
+        <td class="py-3.5 px-3 align-middle">
+          <div class="font-bold text-slate-800 leading-snug">${escapeHtml(p.projectType)}</div>
+          ${p.period ? `<div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(p.period)}</div>` : ""}
+        </td>
+        <td class="py-3.5 px-3 align-middle text-xs text-slate-700">${escapeHtml(p.consultant) || "—"}</td>
+        <td class="py-3.5 px-3 align-middle">
+          <div class="flex flex-wrap gap-1.5">
+            ${billingPills || '<span class="text-xs text-slate-400">尚未設定期數</span>'}
+          </div>
+        </td>
+        <td class="py-3.5 px-4 align-middle text-right whitespace-nowrap">
+          ${actionBtns}
+        </td>
+      </tr>`;
+    }
+
+    // ==================== 七、專案明細 / 新增 / 編輯 Modal 邏輯 ====================
+    function updateSpecialistSelectStyle() {
+      const sel = document.getElementById("fSpecialist");
+      if (!sel) return;
+      if (!sel.value) {
+        sel.classList.add("text-slate-400");
+        sel.classList.remove("text-slate-800");
+      } else {
+        sel.classList.remove("text-slate-400");
+        sel.classList.add("text-slate-800");
+      }
+    }
+
+    function populateSpecialistSelect(selectedVal) {
+      const sel = document.getElementById("fSpecialist");
+      const list = [...appState.specialists];
+      if (selectedVal && !list.includes(selectedVal)) {
+        list.push(selectedVal);
+      }
+      const placeholderOpt = `<option value="" disabled ${!selectedVal ? "selected" : ""}>選擇專企</option>`;
+      sel.innerHTML = placeholderOpt + list.map(sp =>
+        `<option value="${escapeHtml(sp)}" class="text-slate-800" ${sp === selectedVal ? "selected" : ""}>${escapeHtml(sp)}</option>`
+      ).join("");
+      updateSpecialistSelectStyle();
+    }
+
+    function toggleCertBodyInput() {
+      const checked = document.getElementById("fHasCertification").checked;
+      const bodyInput = document.getElementById("fCertBody");
+      bodyInput.disabled = !checked;
+      bodyInput.classList.toggle("bg-slate-100", !checked);
+      bodyInput.classList.toggle("text-slate-400", !checked);
+    }
+
+    function updateModalStatusBanner() {
+      const banner = document.getElementById("modalStatusBanner");
+      const badge = document.getElementById("modalStatusBadge");
+      const activeTop = document.getElementById("modalActiveActionBtns");
+      const closedTop = document.getElementById("modalClosedActionBtns");
+      const activeFoot = document.getElementById("modalFooterActiveBtns");
+      const closedFoot = document.getElementById("modalFooterClosedBtns");
+      const delBtn = document.getElementById("modalDeleteProjectBtn");
+
+      if (isCreatingNewProject) {
+        banner.className = "px-5 py-3 bg-emerald-50 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0";
+        badge.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-600 text-white";
+        badge.textContent = "新增進行中專案";
+        activeTop.classList.add("hidden");
+        closedTop.classList.add("hidden");
+        activeFoot.classList.add("hidden");
+        closedFoot.classList.add("hidden");
+        delBtn.classList.add("hidden");
+        return;
+      }
+
+      delBtn.classList.remove("hidden");
+
+      if (editingProjectDraft.status === "active") {
+        banner.className = "px-5 py-3 bg-indigo-50 border-b border-indigo-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0";
+        badge.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-600 text-white";
+        badge.textContent = "進行中專案";
+        activeTop.classList.remove("hidden");
+        closedTop.classList.add("hidden");
+        activeFoot.classList.remove("hidden");
+        closedFoot.classList.add("hidden");
+      } else if (editingProjectDraft.closeType === "terminated") {
+        banner.className = "px-5 py-3 bg-rose-50 border-b border-rose-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0";
+        badge.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-rose-600 text-white";
+        badge.textContent = "⛔ 終止輔導（已歸入結案區）";
+        activeTop.classList.add("hidden");
+        closedTop.classList.remove("hidden");
+        activeFoot.classList.add("hidden");
+        closedFoot.classList.remove("hidden");
+      } else {
+        banner.className = "px-5 py-3 bg-slate-200/70 border-b border-slate-300 flex flex-wrap items-center justify-between gap-2.5 shrink-0";
+        badge.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-slate-700 text-white";
+        badge.textContent = "✓ 正常結案（已結案專案）";
+        activeTop.classList.add("hidden");
+        closedTop.classList.remove("hidden");
+        activeFoot.classList.add("hidden");
+        closedFoot.classList.remove("hidden");
+      }
+    }
+
+    function openCreateProjectModal() {
+      isCreatingNewProject = true;
+      editingProjectDraft = {
+        id: "proj_" + Date.now(),
+        status: "active",
+        closeType: null,
+        contractNo: "",
+        clientName: "",
+        projectType: "",
+        specialist: "",
+        period: "",
+        consultant: "",
+        contactPerson: "",
+        contactPhone: "",
+        contactEmail: "",
+        contactAddress: "",
+        extras: {
+          hasCertification: false,
+          certBody: "",
+          hasDesign: false,
+          hasTranslation: false,
+          hasInternalAuditCert: false,
+          hasBanner: false,
+          note: ""
+        },
+        billings: [
+          { term: "第1期", month: "", condition: "", amount: 0, invoiced: false, isFinal: false },
+          { term: "第2期", month: "", condition: "", amount: 0, invoiced: false, isFinal: true }
+        ],
+        commLogs: []
+      };
+
+      document.getElementById("modalHeaderTitle").textContent = "新增專案與請款期數設定";
+      document.getElementById("modalHeaderSub").textContent = "建立新客戶顧問輔導與驗證專案資料";
+      populateModalFormFromDraft();
+      document.getElementById("projectModal").classList.remove("hidden");
+    }
+
+    function openProjectDetailModal(projectId) {
+      const target = appState.projects.find(p => p.id === projectId);
+      if (!target) return;
+
+      isCreatingNewProject = false;
+      editingProjectDraft = JSON.parse(JSON.stringify(target));
+      if (!editingProjectDraft.extras) {
+        editingProjectDraft.extras = {
+          hasCertification: false,
+          certBody: "",
+          hasDesign: false,
+          hasTranslation: false,
+          hasInternalAuditCert: false,
+          hasBanner: false,
+          note: ""
+        };
+      }
+      if (typeof editingProjectDraft.extras.note === "undefined") {
+        editingProjectDraft.extras.note = "";
+      }
+      if (!Array.isArray(editingProjectDraft.billings)) {
+        editingProjectDraft.billings = [];
+      }
+      if (!Array.isArray(editingProjectDraft.commLogs)) {
+        editingProjectDraft.commLogs = [];
+      }
+
+      document.getElementById("modalHeaderTitle").textContent =
+        `${editingProjectDraft.clientName} — 專案明細`;
+      document.getElementById("modalHeaderSub").textContent =
+        `合約編號：${editingProjectDraft.contractNo || "尚未填寫"} ｜ 案別：${editingProjectDraft.projectType}`;
+
+      populateModalFormFromDraft();
+      document.getElementById("projectModal").classList.remove("hidden");
+    }
+
+    function closeProjectModal() {
+      document.getElementById("projectModal").classList.add("hidden");
+      editingProjectDraft = null;
+    }
+
+    function populateModalFormFromDraft() {
+      const d = editingProjectDraft;
+      document.getElementById("editProjectId").value = d.id;
+      document.getElementById("fContractNo").value = d.contractNo || "";
+      document.getElementById("fClientName").value = d.clientName || "";
+      populateSpecialistSelect(d.specialist || "");
+      document.getElementById("fProjectType").value = d.projectType || "";
+      document.getElementById("fPeriod").value = d.period || "";
+      document.getElementById("fConsultant").value = d.consultant || "";
+
+      document.getElementById("fContactPerson").value = d.contactPerson || "";
+      document.getElementById("fContactPhone").value = d.contactPhone || "";
+      document.getElementById("fContactEmail").value = d.contactEmail || "";
+      document.getElementById("fContactAddress").value = d.contactAddress || "";
+
+      document.getElementById("fHasCertification").checked = !!d.extras.hasCertification;
+      document.getElementById("fCertBody").value = d.extras.certBody || "";
+      document.getElementById("fHasDesign").checked = !!d.extras.hasDesign;
+      document.getElementById("fHasTranslation").checked = !!d.extras.hasTranslation;
+      document.getElementById("fHasInternalAuditCert").checked = !!d.extras.hasInternalAuditCert;
+      document.getElementById("fHasBanner").checked = !!d.extras.hasBanner;
+      document.getElementById("fExtraNote").value = d.extras.note || "";
+
+      toggleCertBodyInput();
+      updateModalStatusBanner();
+      renderBillingRows();
+      renderCommLogRows();
+    }
+
+    function syncFormFieldsToDraft() {
+      if (!editingProjectDraft) return;
+      editingProjectDraft.contractNo = document.getElementById("fContractNo").value.trim();
+      editingProjectDraft.clientName = document.getElementById("fClientName").value.trim();
+      editingProjectDraft.specialist = document.getElementById("fSpecialist").value.trim();
+      editingProjectDraft.projectType = document.getElementById("fProjectType").value.trim();
+      editingProjectDraft.period = document.getElementById("fPeriod").value.trim();
+      editingProjectDraft.consultant = document.getElementById("fConsultant").value.trim();
+
+      editingProjectDraft.contactPerson = document.getElementById("fContactPerson").value.trim();
+      editingProjectDraft.contactPhone = document.getElementById("fContactPhone").value.trim();
+      editingProjectDraft.contactEmail = document.getElementById("fContactEmail").value.trim();
+      editingProjectDraft.contactAddress = document.getElementById("fContactAddress").value.trim();
+
+      editingProjectDraft.extras = {
+        hasCertification: document.getElementById("fHasCertification").checked,
+        certBody: document.getElementById("fCertBody").value.trim(),
+        hasDesign: document.getElementById("fHasDesign").checked,
+        hasTranslation: document.getElementById("fHasTranslation").checked,
+        hasInternalAuditCert: document.getElementById("fHasInternalAuditCert").checked,
+        hasBanner: document.getElementById("fHasBanner").checked,
+        note: document.getElementById("fExtraNote").value.trim()
+      };
+    }
+
+    // ---- 請款明細表格動態渲染與計算（系統預設最後一筆請款就是尾款，且此行顏色深於其他行） ----
+    function renderBillingRows() {
+      const tbody = document.getElementById("billingRowsContainer");
+      const billings = editingProjectDraft.billings || [];
+
+      if (billings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">尚無請款期數，請點擊上方「+ 新增請款期數」</td></tr>`;
+      } else {
+        const lastIdx = billings.length - 1;
+        tbody.innerHTML = billings.map((b, idx) => {
+          const isLast = idx === lastIdx;
+          let tagHtml = `<span class="badge-uninvoiced px-2 py-0.5 rounded font-bold">未開立</span>`;
+          if (b.invoiced) {
+            tagHtml = `<span class="badge-invoiced px-2 py-0.5 rounded font-bold">已開立</span>`;
+          } else if (isLast) {
+            tagHtml = `<span class="badge-final px-2 py-0.5 rounded font-bold">尾款</span>`;
+          }
+
+          // 系統默認最後一筆請款就是尾款，此行底色深於其他行
+          const rowClass = isLast
+            ? "bg-slate-200 border-t-2 border-slate-400 font-semibold"
+            : "bg-white border-b border-slate-100 hover:bg-slate-50/70";
+
+          return `<tr class="${rowClass}">
+            <td class="py-2 px-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg ${isLast ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-800"} font-extrabold text-xs">
+                ${idx + 1}
+              </span>
+            </td>
+            <td class="py-2 px-3">${tagHtml}</td>
+            <td class="py-2 px-3">
+              <input type="text" value="${escapeHtml(b.month)}" onchange="updateBillingField(${idx}, 'month', this.value)"
+                class="w-full px-2 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold outline-none focus:ring-2 focus:ring-indigo-500" />
+            </td>
+            <td class="py-2 px-3">
+              <input type="text" value="${escapeHtml(b.condition)}" onchange="updateBillingField(${idx}, 'condition', this.value)"
+                class="w-full px-2 py-1.5 rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </td>
+            <td class="py-2 px-3">
+              <input type="number" min="0" step="100" value="${Number(b.amount) || 0}" onchange="updateBillingField(${idx}, 'amount', Number(this.value))"
+                class="w-full px-2 py-1.5 rounded-lg border border-slate-300 bg-white font-mono font-bold text-right outline-none focus:ring-2 focus:ring-indigo-500" />
+            </td>
+            <td class="py-2 px-3 text-center">
+              <input type="checkbox" ${b.invoiced ? "checked" : ""} onchange="updateBillingField(${idx}, 'invoiced', this.checked)"
+                class="w-4 h-4 rounded text-[#7030A0] cursor-pointer" />
+            </td>
+            <td class="py-2 px-3 text-center">
+              <button type="button" onclick="removeBillingRow(${idx})"
+                class="text-rose-500 hover:text-rose-700 font-extrabold text-sm px-1.5 py-0.5 rounded hover:bg-rose-50">
+                &times;
+              </button>
+            </td>
+          </tr>`;
+        }).join("");
+      }
+
+      // 更新請款金額小計
+      let total = 0;
+      let invoicedSum = 0;
+      let uninvoicedSum = 0;
+      let finalSum = 0;
+      const lastIdx = billings.length - 1;
+      billings.forEach((b, idx) => {
+        const amt = Number(b.amount) || 0;
+        const isLast = idx === lastIdx;
+        total += amt;
+        if (b.invoiced) {
+          invoicedSum += amt;
+        } else if (isLast) {
+          finalSum += amt;
+        } else {
+          uninvoicedSum += amt;
+        }
+      });
+
+      document.getElementById("modalBillingSummaryText").textContent =
+        `合約總金額：${formatCurrency(total)} ｜ 已開立：${formatCurrency(invoicedSum)} ｜ 未開立：${formatCurrency(uninvoicedSum)} ｜ 尾款：${formatCurrency(finalSum)}`;
+    }
+
+    function addBillingRow() {
+      const nextNum = (editingProjectDraft.billings || []).length + 1;
+      editingProjectDraft.billings.push({
+        term: `第${nextNum}期`,
+        month: "",
+        condition: "",
+        amount: 0,
+        invoiced: false,
+        isFinal: true
+      });
+      renderBillingRows();
+    }
+
+    function removeBillingRow(idx) {
+      editingProjectDraft.billings.splice(idx, 1);
+      renderBillingRows();
+    }
+
+    function updateBillingField(idx, field, value) {
+      if (!editingProjectDraft.billings[idx]) return;
+      editingProjectDraft.billings[idx][field] = value;
+      renderBillingRows();
+    }
+
+    // ---- 往來紀錄動態渲染 ----
+    function renderCommLogRows() {
+      const container = document.getElementById("commLogsContainer");
+      const logs = editingProjectDraft.commLogs || [];
+
+      if (logs.length === 0) {
+        container.innerHTML = `<div class="py-4 text-center text-xs text-slate-400 bg-white rounded-xl border border-slate-200">尚無往來紀錄，可點擊「+ 新增追蹤紀錄」進行登錄</div>`;
+        return;
+      }
+
+      container.innerHTML = logs.map((log, idx) => {
+        const isTerminateEntry = String(log.note || "").includes("[終止輔導]");
+        const rowBg = isTerminateEntry ? "bg-rose-50 border-rose-200" : "bg-white border-slate-200";
+        return `<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl border ${rowBg}">
+          <input type="text" value="${escapeHtml(log.date)}" onchange="updateCommLogField(${idx}, 'date', this.value)"
+            class="sm:w-32 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input type="text" value="${escapeHtml(log.note)}" onchange="updateCommLogField(${idx}, 'note', this.value)"
+            class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs ${isTerminateEntry ? "font-bold text-rose-800" : "text-slate-800"} outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button type="button" onclick="removeCommLogRow(${idx})"
+            class="self-end sm:self-center text-rose-500 hover:text-rose-700 font-bold text-sm px-2 py-1 rounded hover:bg-rose-100">
+            &times;
+          </button>
+        </div>`;
+      }).join("");
+    }
+
+    function addCommLogRow() {
+      editingProjectDraft.commLogs.unshift({
+        date: getTodayDateStr(),
+        note: ""
+      });
+      renderCommLogRows();
+    }
+
+    function removeCommLogRow(idx) {
+      editingProjectDraft.commLogs.splice(idx, 1);
+      renderCommLogRows();
+    }
+
+    function updateCommLogField(idx, field, value) {
+      if (!editingProjectDraft.commLogs[idx]) return;
+      editingProjectDraft.commLogs[idx][field] = value;
+    }
+
+    // ---- 儲存專案明細表單 ----
+    document.getElementById("projectDetailForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!editingProjectDraft) return;
+
+      syncFormFieldsToDraft();
+      if (!editingProjectDraft.clientName || !editingProjectDraft.specialist || !editingProjectDraft.projectType) {
+        showToast("請填寫「客戶名稱」、「負責專企」與「案別 / 輔導項目」", "error");
+        return;
+      }
+
+      // 確保最後一筆請款標記為尾款
+      if (Array.isArray(editingProjectDraft.billings) && editingProjectDraft.billings.length > 0) {
+        const lastIdx = editingProjectDraft.billings.length - 1;
+        editingProjectDraft.billings = editingProjectDraft.billings.map((b, idx) => ({
+          ...b,
+          term: `第${idx + 1}期`,
+          isFinal: idx === lastIdx
+        }));
+      }
+
+      if (isCreatingNewProject) {
+        appState.projects.unshift(editingProjectDraft);
+        showToast(`已成功新增專案：${editingProjectDraft.clientName}`);
+      } else {
+        const idx = appState.projects.findIndex(p => p.id === editingProjectDraft.id);
+        if (idx !== -1) {
+          appState.projects[idx] = editingProjectDraft;
+        }
+        showToast(`已儲存「${editingProjectDraft.clientName}」的專案變更`);
+      }
+
+      saveAppState();
+      closeProjectModal();
+      renderAllOverview();
+    });
+
+    // ==================== 八、「⛔ 終止輔導」與結案 / 恢復 / 刪除邏輯 ====================
+    function openTerminateConfirmModal() {
+      if (!editingProjectDraft) return;
+      syncFormFieldsToDraft();
+      document.getElementById("terminateTargetClient").textContent =
+        editingProjectDraft.clientName || "未命名客戶";
+      document.getElementById("terminateTargetProject").textContent =
+        `${editingProjectDraft.contractNo ? editingProjectDraft.contractNo + " ｜ " : ""}${editingProjectDraft.projectType || ""}`;
+      document.getElementById("terminateReasonInput").value = "";
+      document.getElementById("terminateConfirmModal").classList.remove("hidden");
+    }
+
+    function closeTerminateConfirmModal() {
+      document.getElementById("terminateConfirmModal").classList.add("hidden");
+    }
+
+    function confirmTerminateProject() {
+      if (!editingProjectDraft) return;
+      syncFormFieldsToDraft();
+
+      const reason = document.getElementById("terminateReasonInput").value.trim();
+      const today = getTodayDateStr();
+      const logEntry = {
+        date: today,
+        note: reason ? `[終止輔導] ${reason}` : "[終止輔導] 專案終止輔導並移入結案區"
+      };
+
+      editingProjectDraft.status = "closed";
+      editingProjectDraft.closeType = "terminated";
+      editingProjectDraft.commLogs = [logEntry, ...(editingProjectDraft.commLogs || [])];
+
+      if (isCreatingNewProject) {
+        appState.projects.unshift(editingProjectDraft);
+      } else {
+        const idx = appState.projects.findIndex(p => p.id === editingProjectDraft.id);
+        if (idx !== -1) {
+          appState.projects[idx] = editingProjectDraft;
+        }
+      }
+
+      saveAppState();
+      closeTerminateConfirmModal();
+      closeProjectModal();
+      renderAllOverview();
+      showToast(`已將「${editingProjectDraft.clientName}」標記為【終止輔導】並移至結案區`, "warning");
+    }
+
+    function promptNormalCloseProject() {
+      if (!editingProjectDraft) return;
+      syncFormFieldsToDraft();
+      openGenericConfirm(
+        "確認完成結案？",
+        `確定將「${editingProjectDraft.clientName} — ${editingProjectDraft.projectType}」標記為正常結案並移入已結案專案區嗎？`,
+        "確認結案",
+        "bg-slate-800 hover:bg-slate-900",
+        function () {
+          editingProjectDraft.status = "closed";
+          editingProjectDraft.closeType = "completed";
+          editingProjectDraft.commLogs = [
+            { date: getTodayDateStr(), note: "[完成結案] 專案輔導與驗證完成，正式結案" },
+            ...(editingProjectDraft.commLogs || [])
+          ];
+          const idx = appState.projects.findIndex(p => p.id === editingProjectDraft.id);
+          if (idx !== -1) appState.projects[idx] = editingProjectDraft;
+          saveAppState();
+          closeGenericConfirm();
+          closeProjectModal();
+          renderAllOverview();
+          showToast(`專案「${editingProjectDraft.clientName}」已完成結案`);
+        }
+      );
+    }
+
+    function promptReopenProject() {
+      if (!editingProjectDraft) return;
+      syncFormFieldsToDraft();
+      openGenericConfirm(
+        "恢復為進行中專案？",
+        `確定將「${editingProjectDraft.clientName}」從結案區恢復為【進行中專案】嗎？`,
+        "確認恢復",
+        "bg-indigo-600 hover:bg-indigo-700",
+        function () {
+          editingProjectDraft.status = "active";
+          editingProjectDraft.closeType = null;
+          editingProjectDraft.commLogs = [
+            { date: getTodayDateStr(), note: "[恢復進行] 專案由結案區恢復為進行中狀態" },
+            ...(editingProjectDraft.commLogs || [])
+          ];
+          const idx = appState.projects.findIndex(p => p.id === editingProjectDraft.id);
+          if (idx !== -1) appState.projects[idx] = editingProjectDraft;
+          saveAppState();
+          closeGenericConfirm();
+          closeProjectModal();
+          renderAllOverview();
+          showToast(`已將「${editingProjectDraft.clientName}」恢復為進行中專案`);
+        }
+      );
+    }
+
+    function promptDeleteProject() {
+      if (!editingProjectDraft) return;
+      openGenericConfirm(
+        "確認刪除此專案？",
+        `刪除後將無法復原「${editingProjectDraft.clientName} — ${editingProjectDraft.projectType}」的所有合約與請款紀錄，確定要刪除嗎？`,
+        "確認永久刪除",
+        "bg-rose-600 hover:bg-rose-700",
+        function () {
+          const targetName = editingProjectDraft.clientName;
+          appState.projects = appState.projects.filter(p => p.id !== editingProjectDraft.id);
+          saveAppState();
+          closeGenericConfirm();
+          closeProjectModal();
+          renderAllOverview();
+          showToast(`已刪除專案：${targetName}`, "error");
+        }
+      );
+    }
+
+    function openGenericConfirm(title, msg, btnText, btnClass, onConfirm) {
+      document.getElementById("genericConfirmTitle").textContent = title;
+      document.getElementById("genericConfirmMsg").textContent = msg;
+      const btn = document.getElementById("genericConfirmBtn");
+      btn.textContent = btnText;
+      btn.className = `px-4 py-2 rounded-xl text-white text-xs font-extrabold transition ${btnClass}`;
+      genericConfirmAction = onConfirm;
+      document.getElementById("genericConfirmModal").classList.remove("hidden");
+    }
+
+    function closeGenericConfirm() {
+      document.getElementById("genericConfirmModal").classList.add("hidden");
+      genericConfirmAction = null;
+    }
+
+    document.getElementById("genericConfirmBtn").addEventListener("click", function () {
+      if (typeof genericConfirmAction === "function") {
+        genericConfirmAction();
+      }
+    });
+
+    // ==================== 九、系統設定 & 雲端備份 ====================
+    function renderSettingsView() {
+      renderSettingsSpecialists();
+      renderSettingsAccounts();
+      document.getElementById("gasUrlInput").value = appState.gasUrl || "";
+    }
+
+    function renderSettingsSpecialists() {
+      const container = document.getElementById("settingsSpecialistList");
+      container.innerHTML = appState.specialists.map((sp, idx) => `
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800">
+          <span>${escapeHtml(sp)}</span>
+          <button type="button" onclick="removeSpecialist(${idx})"
+            class="text-slate-400 hover:text-rose-600 font-extrabold text-sm leading-none">&times;</button>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("addSpecialistForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const input = document.getElementById("newSpecialistInput");
+      const name = input.value.trim();
+      if (!name) return;
+      if (appState.specialists.includes(name)) {
+        showToast("此專企人員已存在於名單中", "warning");
+        return;
+      }
+      appState.specialists.push(name);
+      saveAppState();
+      input.value = "";
+      renderSettingsSpecialists();
+      showToast(`已新增專企人員：${name}`);
+    });
+
+    function removeSpecialist(idx) {
+      const removed = appState.specialists[idx];
+      appState.specialists.splice(idx, 1);
+      saveAppState();
+      renderSettingsSpecialists();
+      showToast(`已移除專企人員：${removed}`, "warning");
+    }
+
+    function renderSettingsAccounts() {
+      const tbody = document.getElementById("settingsAccountsTable");
+      tbody.innerHTML = appState.accounts.map((acc, idx) => {
+        const isPrimaryAdmin = acc.username.toLowerCase() === "zoe";
+        return `<tr>
+          <td class="py-2.5 px-4 font-mono font-bold text-slate-900">${escapeHtml(acc.username)}</td>
+          <td class="py-2.5 px-4 text-slate-700 font-semibold">${escapeHtml(acc.displayName)}</td>
+          <td class="py-2.5 px-4 font-mono text-xs text-slate-500">${escapeHtml(acc.password)}</td>
+          <td class="py-2.5 px-4 text-right">
+            ${isPrimaryAdmin
+              ? `<span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">系統預設管理員</span>`
+              : `<button type="button" onclick="removeAccount(${idx})" class="text-xs font-bold text-rose-600 hover:underline">移除</button>`
+            }
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    document.getElementById("addAccountForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const u = document.getElementById("newAccUser").value.trim();
+      const n = document.getElementById("newAccName").value.trim();
+      const p = document.getElementById("newAccPass").value.trim();
+      if (!u || !n || !p) return;
+
+      if (appState.accounts.some(a => a.username.toLowerCase() === u.toLowerCase())) {
+        showToast("此登入帳號已存在，請使用其他帳號名稱", "error");
+        return;
+      }
+
+      appState.accounts.push({ username: u, displayName: n, password: p });
+      saveAppState();
+      document.getElementById("newAccUser").value = "";
+      document.getElementById("newAccName").value = "";
+      document.getElementById("newAccPass").value = "";
+      renderSettingsAccounts();
+      showToast(`已新增登入帳號：${u}`);
+    });
+
+    function removeAccount(idx) {
+      const target = appState.accounts[idx];
+      if (!target || target.username.toLowerCase() === "zoe") return;
+      appState.accounts.splice(idx, 1);
+      saveAppState();
+      renderSettingsAccounts();
+      showToast(`已移除登入帳號：${target.username}`, "warning");
+    }
+
+    // ---- Google Apps Script 雲端同步與本機 JSON 備份 ----
+    function saveGasUrl() {
+      appState.gasUrl = document.getElementById("gasUrlInput").value.trim();
+      saveAppState();
+      showToast("已儲存 Google Apps Script Web App 網址");
+    }
+
+    async function backupToGoogleSheet() {
+      const url = appState.gasUrl || document.getElementById("gasUrlInput").value.trim();
+      if (!url) {
+        showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
+        return;
+      }
+      try {
+        showToast("正在將專案資料備份至 Google 試算表...");
+        const payload = JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          specialists: appState.specialists,
+          accounts: appState.accounts,
+          projects: appState.projects
+        });
+        await fetch(url, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: payload
+        });
+        showToast(`已傳送 ${appState.projects.length} 筆專案資料至 Google 試算表！`);
+      } catch (err) {
+        showToast("連線至 Google 試算表時發生錯誤，請檢查網址與部署權限", "error");
+      }
+    }
+
+    async function restoreFromGoogleSheet() {
+      const url = appState.gasUrl || document.getElementById("gasUrlInput").value.trim();
+      if (!url) {
+        showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
+        return;
+      }
+      try {
+        showToast("正在從 Google 試算表讀取備份資料...");
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data && Array.isArray(data.projects)) {
+          appState.projects = data.projects;
+          if (Array.isArray(data.specialists) && data.specialists.length) {
+            appState.specialists = data.specialists;
+          }
+          if (Array.isArray(data.accounts) && data.accounts.length) {
+            appState.accounts = data.accounts;
+          }
+          saveAppState();
+          renderSettingsView();
+          showToast(`已成功從 Google 試算表還原 ${appState.projects.length} 筆專案資料！`);
+        } else {
+          showToast("Google 試算表中尚無有效的備份資料", "warning");
+        }
+      } catch (err) {
+        showToast("讀取 Google 試算表失敗，請確認 Web App 權限設為「所有人」", "error");
+      }
+    }
+
+    function downloadJsonBackup() {
+      const blob = new Blob([JSON.stringify({
+        exportedAt: new Date().toISOString(),
+        specialists: appState.specialists,
+        accounts: appState.accounts,
+        projects: appState.projects
+      }, null, 2)], { type: "application/json;charset=utf-8" });
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `AHEAD_專案管理備份_${getTodayDateStr()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast("已下載 JSON 備份檔案");
+    }
+
+    function importJsonBackup(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (!parsed || !Array.isArray(parsed.projects)) {
+            showToast("JSON 檔案格式不符，找不到 projects 資料陣列", "error");
+            return;
+          }
+          appState.projects = parsed.projects;
+          if (Array.isArray(parsed.specialists) && parsed.specialists.length) {
+            appState.specialists = parsed.specialists;
+          }
+          if (Array.isArray(parsed.accounts) && parsed.accounts.length) {
+            appState.accounts = parsed.accounts;
+          }
+          saveAppState();
+          renderSettingsView();
+          showToast(`已成功匯入 ${appState.projects.length} 筆專案資料！`);
+        } catch (err) {
+          showToast("解析 JSON 備份檔失敗，請確認檔案未損毀", "error");
+        }
+        event.target.value = "";
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    function promptResetInitialData() {
+      openGenericConfirm(
+        "清空所有專案資料？",
+        "此操作將清空目前系統內的所有專案紀錄，確定要清空嗎？",
+        "確認清空",
+        "bg-rose-600 hover:bg-rose-700",
+        function () {
+          resetDataToInitial(true);
+          closeGenericConfirm();
+          renderSettingsView();
+          showToast("已清空所有專案資料");
+        }
+      );
+    }
+
+    function toggleGasCodeBlock() {
+      const box = document.getElementById("gasCodeContainer");
+      const arrow = document.getElementById("gasCodeToggleArrow");
+      const isHidden = box.classList.contains("hidden");
+      box.classList.toggle("hidden", !isHidden);
+      arrow.textContent = isHidden ? "▲ 收合" : "▼ 展開";
+    }
+
+    function copyGasCode() {
+      const codeText = document.getElementById("gasCodePre").textContent;
+      const ta = document.createElement("textarea");
+      ta.value = codeText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      showToast("已將 Code.gs 程式碼複製到剪貼簿");
+    }
+
+    // ==================== 十、頁面載入初始化 ====================
+    window.addEventListener("DOMContentLoaded", function () {
+      loadAppState();
+      if (appState.loggedInUser && appState.loggedInUser.username) {
+        enterMainSystem();
+      }
+    });
+  </script>
+</body>
+</html>
