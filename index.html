@@ -2058,32 +2058,42 @@ function doPost(e) {
       showToast("已儲存 Google Apps Script Web App 網址");
     }
 
-   async function backupToGoogleSheet() {
-      const url = appState.gasUrl || document.getElementById("gasUrlInput").value.trim();
-      if (!url) {
-        showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
-        return;
-      }
-      try {
-        showToast("正在將專案資料備份至 Google 試算表...");
-        const payload = JSON.stringify({
-          exportedAt: new Date().toISOString(),
-          specialists: appState.specialists,
-          accounts: appState.accounts,
-          projects: appState.projects
-        });
-        const formBody = new URLSearchParams();
-        formBody.append("payload", payload);
-        await fetch(url, {
-          method: "POST",
-          mode: "no-cors",
-          body: formBody
-        });
-        showToast("已傳送專案資料至 Google 試算表！");
-      } catch (err) {
-        console.error(err);
-        showToast("備份失敗，請檢查網址或網路連線", "error");
-        showToast("連線至 Google 試算表時發生錯誤，請檢查網址與部署權限", "error");
+  async function backupToGoogleSheet() {
+  const url = appState.gasUrl || document.getElementById("gasUrlInput").value.trim();
+  if (!url) {
+    showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
+    return;
+  }
+  try {
+    showToast("正在將專案資料備份至 Google 試算表...");
+    const payload = JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      specialists: appState.specialists,
+      accounts: appState.accounts,
+      projects: appState.projects
+    });
+    const chunkSize = 1500;
+    const chunks = [];
+    for (let i = 0; i < payload.length; i += chunkSize) {
+      chunks.push(payload.slice(i, i + chunkSize));
+    }
+    for (let i = 0; i < chunks.length; i++) {
+      const qs = new URLSearchParams({
+        action: "chunk",
+        idx: String(i),
+        data: chunks[i]
+      });
+      await fetch(`${url}?${qs.toString()}`, { mode: "no-cors" });
+    }
+    const commitQs = new URLSearchParams({
+      action: "commit",
+      count: String(chunks.length)
+    });
+    await fetch(`${url}?${commitQs.toString()}`, { mode: "no-cors" });
+    showToast(`已成功備份 ${appState.projects.length} 筆專案資料至 Google 試算表！`);
+  } catch (err) {
+    console.error(err);
+    showToast("備份失敗，請檢查網址或網路連線", "error");
       }
     }
 
