@@ -1114,6 +1114,13 @@ function scheduleAutoBackup() {
       showToast(`歡迎登入，${account.displayName}`);
     });
 
+  function isZoeAdmin() {
+      return !!(
+        appState.loggedInUser &&
+        String(appState.loggedInUser.username || "").trim().toLowerCase() === "zoe"
+      );
+    }
+
     function enterMainSystem() {
       document.getElementById("loginScreen").classList.add("hidden");
       document.getElementById("appScreen").classList.remove("hidden");
@@ -1121,11 +1128,22 @@ function scheduleAutoBackup() {
       if (badge && appState.loggedInUser) {
         badge.textContent = `登入者：${appState.loggedInUser.displayName || appState.loggedInUser.username}`;
       }
+
+      const canAccessSettings = isZoeAdmin();
+      const navSettingsBtn = document.getElementById("navSettingsBtn");
+      if (navSettingsBtn) {
+        navSettingsBtn.classList.toggle("hidden", !canAccessSettings);
+      }
+
+      if (!canAccessSettings && currentViewName === "settings") {
+        currentViewName = "overview";
+      }
       switchView(currentViewName || "overview");
     }
 
     function logout() {
       appState.loggedInUser = null;
+      currentViewName = "overview";
       saveAppState();
       document.getElementById("loginUser").value = "";
       document.getElementById("loginPass").value = "";
@@ -1137,11 +1155,21 @@ function scheduleAutoBackup() {
 
     // ==================== 四、主視圖切換 ====================
     function switchView(view) {
+      const canAccessSettings = isZoeAdmin();
+      if (view === "settings" && !canAccessSettings) {
+        showToast("僅限管理員 Zoe 可存取「系統設定 & 雲端備份」頁面", "error");
+        view = "overview";
+      }
+
       currentViewName = view === "settings" ? "settings" : "overview";
       const overviewEl = document.getElementById("overviewView");
       const settingsEl = document.getElementById("settingsView");
       const navOverviewBtn = document.getElementById("navOverviewBtn");
       const navSettingsBtn = document.getElementById("navSettingsBtn");
+
+      if (navSettingsBtn) {
+        navSettingsBtn.classList.toggle("hidden", !canAccessSettings);
+      }
 
       if (currentViewName === "settings") {
         overviewEl.classList.add("hidden");
@@ -1153,7 +1181,9 @@ function scheduleAutoBackup() {
         settingsEl.classList.add("hidden");
         overviewEl.classList.remove("hidden");
         navOverviewBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-indigo-700 shadow-2xs transition";
-        navSettingsBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+        if (navSettingsBtn && canAccessSettings) {
+          navSettingsBtn.className = "px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+        }
         renderAllOverview();
       }
     }
