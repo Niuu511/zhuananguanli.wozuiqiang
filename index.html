@@ -987,9 +987,97 @@ function doPost(e) {
     let editingProjectDraft = null;
     let isCreatingNewProject = false;
     let genericConfirmAction = null;
+   let isCloudSyncing = false;
 
-   
+function loadAppState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        const loadedAccounts = Array.isArray(parsed.accounts) && parsed.accounts.length
+          ? parsed.accounts
+          : [...DEFAULT_ACCOUNTS];
+        if (!loadedAccounts.some(a => String(a.username || "").toLowerCase() === "zoe")) {
+          loadedAccounts.unshift({ username: "zoe", displayName: "Zoe (管理員)", password: DEFAULT_ACCOUNTS[0].password });
+        }
 
+        appState = {
+          projects: Array.isArray(parsed.projects) ? parsed.projects : [...INITIAL_PROJECTS],
+          specialists: Array.isArray(parsed.specialists) && parsed.specialists.length ? parsed.specialists : [...DEFAULT_SPECIALISTS],
+          accounts: loadedAccounts,
+          gasUrl: typeof parsed.gasUrl === "string" ? parsed.gasUrl : "",
+          loggedInUser: parsed.loggedInUser || null
+        };
+        return;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load app state:", err);
+  }
+
+  appState = {
+    projects: [...INITIAL_PROJECTS],
+    specialists: [...DEFAULT_SPECIALISTS],
+    accounts: [...DEFAULT_ACCOUNTS],
+    gasUrl: "",
+    loggedInUser: null
+  };
+  saveAppState();
+}
+
+async function syncCloudOnStartup() {
+  const url = (appState.gasUrl || "").trim();
+  if (!url || isCloudSyncing) return;
+  isCloudSyncing = true;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    const data = await res.json();
+    if (!data || typeof data !== "object") return;
+
+    let updated = false;
+    if (Array.isArray(data.accounts) && data.accounts.length) {
+      const mergedAccounts = [...data.accounts];
+      appState.accounts.forEach(localAcc => {
+        if (!mergedAccounts.some(a => String(a.username || "").toLowerCase() === String(localAcc.username || "").toLowerCase())) {
+          mergedAccounts.push(localAcc);
+        }
+      });
+      if (!mergedAccounts.some(a => String(a.username || "").toLowerCase() === "zoe")) {
+        mergedAccounts.unshift({ username: "zoe", displayName: "Zoe (管理員)", password: DEFAULT_ACCOUNTS[0].password });
+      }
+      appState.accounts = mergedAccounts;
+      updated = true;
+    }
+
+    if (Array.isArray(data.specialists) && data.specialists.length) {
+      appState.specialists = data.specialists;
+      updated = true;
+    }
+
+    if (Array.isArray(data.projects) && data.projects.length > 0) {
+      if (!Array.isArray(appState.projects) || appState.projects.length === 0) {
+        appState.projects = data.projects;
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      if (!document.getElementById("appScreen").classList.contains("hidden")) {
+        if (currentViewName === "settings") {
+          renderSettingsView();
+        } else {
+          renderAllOverview();
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Startup cloud sync skipped or failed:", err);
+  } finally {
+    isCloudSyncing = false;
+  }
+}
     function saveAppState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
