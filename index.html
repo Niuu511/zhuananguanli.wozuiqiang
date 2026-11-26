@@ -988,35 +988,7 @@ function doPost(e) {
     let isCreatingNewProject = false;
     let genericConfirmAction = null;
 
-    function loadAppState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === "object") {
-            appState = {
-              projects: Array.isArray(parsed.projects) ? parsed.projects : [...INITIAL_PROJECTS],
-              specialists: Array.isArray(parsed.specialists) && parsed.specialists.length ? parsed.specialists : [...DEFAULT_SPECIALISTS],
-              accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : [...DEFAULT_ACCOUNTS],
-              gasUrl: typeof parsed.gasUrl === "string" ? parsed.gasUrl : "",
-              loggedInUser: parsed.loggedInUser || null
-            };
-            return;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load app state:", err);
-      }
-
-      appState = {
-        projects: [...INITIAL_PROJECTS],
-        specialists: [...DEFAULT_SPECIALISTS],
-        accounts: [...DEFAULT_ACCOUNTS],
-        gasUrl: "",
-        loggedInUser: null
-      };
-      saveAppState();
-    }
+   
 
     function saveAppState() {
       try {
@@ -2245,11 +2217,12 @@ function scheduleAutoBackup() {
     }
 
     // ==================== 十、頁面載入初始化 ====================
-    window.addEventListener("DOMContentLoaded", function () {
+    window.addEventListener("DOMContentLoaded", async function () {
       loadAppState();
       if (appState.loggedInUser && appState.loggedInUser.username) {
         enterMainSystem();
       }
+      await syncCloudOnStartup();
     });
   </script>
 </body>
