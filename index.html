@@ -2206,7 +2206,7 @@ function scheduleAutoBackup() {
         showToast("正在從 Google 試算表讀取備份資料...");
         const res = await fetch(url);
         const data = await res.json();
-        if (data && Array.isArray(data.projects)) {
+      if (data && Array.isArray(data.projects) && data.projects.length > 0) {
           appState.projects = data.projects;
           if (Array.isArray(data.specialists) && data.specialists.length) {
             appState.specialists = data.specialists;
@@ -2217,8 +2217,8 @@ function scheduleAutoBackup() {
           saveAppState();
           renderSettingsView();
           showToast(`已成功從 Google 試算表還原 ${appState.projects.length} 筆專案資料！`);
-        } else {
-          showToast("Google 試算表中尚無有效的備份資料", "warning");
+       } else {
+          showToast("Google 試算表中尚無有效的專案備份資料", "warning");
         }
       } catch (err) {
         showToast("讀取 Google 試算表失敗，請確認 Web App 權限設為「所有人」", "error");
