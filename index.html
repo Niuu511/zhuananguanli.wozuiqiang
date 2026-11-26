@@ -376,19 +376,66 @@
             <pre id="gasCodePre" class="text-xs font-mono overflow-x-auto leading-relaxed text-emerald-300 p-3 bg-slate-950 rounded-lg border border-slate-800">function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('AHEAD_DB') || ss.insertSheet('AHEAD_DB');
-  var raw = sheet.getRange('A1').getValue();
+  var meta = String(sheet.getRange('A1').getValue() || '');
+  var raw = '';
+  if (meta === 'CHUNKED_STORAGE_V2') {
+    var chunkCount = Number(sheet.getRange('B1').getValue()) || 0;
+    if (chunkCount > 0) {
+      var values = sheet.getRange(3, 1, chunkCount, 1).getValues();
+      raw = values.map(function (r) { return String(r[0] || ''); }).join('');
+    }
+  } else {
+    raw = meta;
+  }
   return ContentService.createTextOutput(raw || '{"projects":[]}')
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('AHEAD_DB') || ss.insertSheet('AHEAD_DB');
-  var payload = e.postData.contents;
-  sheet.getRange('A1').setValue(payload);
-  sheet.getRange('A2').setValue('最後備份時間：' + new Date().toLocaleString('zh-TW'));
-  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('AHEAD_DB') || ss.insertSheet('AHEAD_DB');
+    var p = (e && e.parameter) ? e.parameter : {};
+    if (p.action === 'chunk') {
+      var idx = Number(p.idx);
+      var data = String(p.data || '');
+      if (idx === 0) {
+        var lastRow = sheet.getLastRow();
+        if (lastRow >= 3) {
+          sheet.getRange(3, 1, lastRow - 2, 1).clearContent();
+        }
+      }
+      sheet.getRange(3 + idx, 1).setValue(data);
+    } else if (p.action === 'commit') {
+      var count = Number(p.count) || 0;
+      sheet.getRange('A1').setValue('CHUNKED_STORAGE_V2');
+      sheet.getRange('B1').setValue(count);
+      sheet.getRange('A2').setValue('最後備份時間：' + new Date().toLocaleString('zh-TW'));
+    } else if (e && e.postData && e.postData.contents) {
+      var payload = String(e.postData.contents);
+      var chunkSize = 40000;
+      var chunks = [];
+      for (var i = 0; i < payload.length; i += chunkSize) {
+        chunks.push([payload.slice(i, i + chunkSize)]);
+      }
+      var prevRows = sheet.getLastRow();
+      if (prevRows >= 3) {
+        sheet.getRange(3, 1, prevRows - 2, 1).clearContent();
+      }
+      if (chunks.length > 0) {
+        sheet.getRange(3, 1, chunks.length, 1).setValues(chunks);
+      }
+      sheet.getRange('A1').setValue('CHUNKED_STORAGE_V2');
+      sheet.getRange('B1').setValue(chunks.length);
+      sheet.getRange('A2').setValue('最後備份時間：' + new Date().toLocaleString('zh-TW'));
+    }
+    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
 }</pre>
           </div>
         </div>
@@ -724,6 +771,7 @@ function doPost(e) {
   <script>
     // ==================== 一、系統初始資料 ====================
     const STORAGE_KEY = "ahead_pms_imported_full_v2";
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwTeGVEnyc-5v9jOLPwJWOD2mslFde6dFtrCXeKQtubtJv4EUjzHTlYe0pgtk-TO79XSQ/exec";
 
     const DEFAULT_SPECIALISTS = [
       "Sunny 羅靜婷",
@@ -977,7 +1025,7 @@ function doPost(e) {
       projects: [],
       specialists: [...DEFAULT_SPECIALISTS],
       accounts: [...DEFAULT_ACCOUNTS],
-      gasUrl: "",
+      gasUrl: DEFAULT_GAS_URL,
       loggedInUser: null
     };
 
@@ -987,97 +1035,96 @@ function doPost(e) {
     let editingProjectDraft = null;
     let isCreatingNewProject = false;
     let genericConfirmAction = null;
-   let isCloudSyncing = false;
+    let isCloudSyncing = false;
 
-function loadAppState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        const loadedAccounts = Array.isArray(parsed.accounts) && parsed.accounts.length
-          ? parsed.accounts
-          : [...DEFAULT_ACCOUNTS];
-        if (!loadedAccounts.some(a => String(a.username || "").toLowerCase() === "zoe")) {
-          loadedAccounts.unshift({ username: "zoe", displayName: "Zoe (管理員)", password: DEFAULT_ACCOUNTS[0].password });
+    function loadAppState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            const loadedAccounts = Array.isArray(parsed.accounts) && parsed.accounts.length
+              ? parsed.accounts
+              : [...DEFAULT_ACCOUNTS];
+            if (!loadedAccounts.some(a => String(a.username || "").toLowerCase() === "zoe")) {
+              loadedAccounts.unshift({ username: "zoe", displayName: "Zoe (管理員)", password: DEFAULT_ACCOUNTS[0].password });
+            }
+
+            appState = {
+              projects: Array.isArray(parsed.projects) ? parsed.projects : [...INITIAL_PROJECTS],
+              specialists: Array.isArray(parsed.specialists) && parsed.specialists.length ? parsed.specialists : [...DEFAULT_SPECIALISTS],
+              accounts: loadedAccounts,
+              gasUrl: (typeof parsed.gasUrl === "string" && parsed.gasUrl.trim()) ? parsed.gasUrl.trim() : DEFAULT_GAS_URL,
+              loggedInUser: parsed.loggedInUser || null
+            };
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load app state:", err);
+      }
+
+      appState = {
+        projects: [...INITIAL_PROJECTS],
+        specialists: [...DEFAULT_SPECIALISTS],
+        accounts: [...DEFAULT_ACCOUNTS],
+        gasUrl: DEFAULT_GAS_URL,
+        loggedInUser: null
+      };
+      saveAppState();
+    }
+
+    async function syncCloudOnStartup() {
+      const url = (appState.gasUrl || DEFAULT_GAS_URL || "").trim();
+      if (!url || isCloudSyncing) return;
+      isCloudSyncing = true;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        const data = await res.json();
+        if (!data || typeof data !== "object") return;
+
+        let updated = false;
+        if (Array.isArray(data.accounts) && data.accounts.length) {
+          const mergedAccounts = [...data.accounts];
+          appState.accounts.forEach(localAcc => {
+            if (!mergedAccounts.some(a => String(a.username || "").toLowerCase() === String(localAcc.username || "").toLowerCase())) {
+              mergedAccounts.push(localAcc);
+            }
+          });
+          if (!mergedAccounts.some(a => String(a.username || "").toLowerCase() === "zoe")) {
+            mergedAccounts.unshift({ username: "zoe", displayName: "Zoe (管理員)", password: DEFAULT_ACCOUNTS[0].password });
+          }
+          appState.accounts = mergedAccounts;
+          updated = true;
         }
 
-        appState = {
-          projects: Array.isArray(parsed.projects) ? parsed.projects : [...INITIAL_PROJECTS],
-          specialists: Array.isArray(parsed.specialists) && parsed.specialists.length ? parsed.specialists : [...DEFAULT_SPECIALISTS],
-          accounts: loadedAccounts,
-          gasUrl: typeof parsed.gasUrl === "string" ? parsed.gasUrl : "",
-          loggedInUser: parsed.loggedInUser || null
-        };
-        return;
-      }
-    }
-  } catch (err) {
-    console.error("Failed to load app state:", err);
-  }
-
-  appState = {
-    projects: [...INITIAL_PROJECTS],
-    specialists: [...DEFAULT_SPECIALISTS],
-    accounts: [...DEFAULT_ACCOUNTS],
-    gasUrl: "",
-    loggedInUser: null
-  };
-  saveAppState();
-}
-
-async function syncCloudOnStartup() {
-  const url = (appState.gasUrl || "").trim();
-  if (!url || isCloudSyncing) return;
-  isCloudSyncing = true;
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    const data = await res.json();
-    if (!data || typeof data !== "object") return;
-
-    let updated = false;
-    if (Array.isArray(data.accounts) && data.accounts.length) {
-      const mergedAccounts = [...data.accounts];
-      appState.accounts.forEach(localAcc => {
-        if (!mergedAccounts.some(a => String(a.username || "").toLowerCase() === String(localAcc.username || "").toLowerCase())) {
-          mergedAccounts.push(localAcc);
+        if (Array.isArray(data.specialists) && data.specialists.length) {
+          appState.specialists = data.specialists;
+          updated = true;
         }
-      });
-      if (!mergedAccounts.some(a => String(a.username || "").toLowerCase() === "zoe")) {
-        mergedAccounts.unshift({ username: "zoe", displayName: "Zoe (管理員)", password: DEFAULT_ACCOUNTS[0].password });
-      }
-      appState.accounts = mergedAccounts;
-      updated = true;
-    }
 
-    if (Array.isArray(data.specialists) && data.specialists.length) {
-      appState.specialists = data.specialists;
-      updated = true;
-    }
-
-    if (Array.isArray(data.projects) && data.projects.length > 0) {
-      if (!Array.isArray(appState.projects) || appState.projects.length === 0) {
-        appState.projects = data.projects;
-        updated = true;
-      }
-    }
-
-    if (updated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-      if (!document.getElementById("appScreen").classList.contains("hidden")) {
-        if (currentViewName === "settings") {
-          renderSettingsView();
-        } else {
-          renderAllOverview();
+        if (Array.isArray(data.projects) && data.projects.length > 0) {
+          appState.projects = data.projects;
+          updated = true;
         }
+
+        if (updated) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+          if (!document.getElementById("appScreen").classList.contains("hidden")) {
+            if (currentViewName === "settings") {
+              renderSettingsView();
+            } else {
+              renderAllOverview();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Startup cloud sync skipped or failed:", err);
+      } finally {
+        isCloudSyncing = false;
       }
     }
-  } catch (err) {
-    console.warn("Startup cloud sync skipped or failed:", err);
-  } finally {
-    isCloudSyncing = false;
-  }
-}
+
     function saveAppState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
@@ -1087,15 +1134,17 @@ async function syncCloudOnStartup() {
         showToast("儲存本機資料時發生錯誤", "error");
       }
     }
-let autoBackupTimer = null;
-function scheduleAutoBackup() {
-  const url = appState.gasUrl || (document.getElementById("gasUrlInput") && document.getElementById("gasUrlInput").value.trim());
-  if (!url) return;
-  if (autoBackupTimer) clearTimeout(autoBackupTimer);
-  autoBackupTimer = setTimeout(() => {
-    backupToGoogleSheet();
-  }, 3000);
-}
+
+    let autoBackupTimer = null;
+    function scheduleAutoBackup() {
+      const url = (appState.gasUrl || (document.getElementById("gasUrlInput") && document.getElementById("gasUrlInput").value) || DEFAULT_GAS_URL).trim();
+      if (!url) return;
+      if (autoBackupTimer) clearTimeout(autoBackupTimer);
+      autoBackupTimer = setTimeout(() => {
+        backupToGoogleSheet();
+      }, 3000);
+    }
+
     function resetDataToInitial(clearAll = false) {
       appState.projects = clearAll ? [] : [...INITIAL_PROJECTS];
       saveAppState();
@@ -1174,7 +1223,7 @@ function scheduleAutoBackup() {
       showToast(`歡迎登入，${account.displayName}`);
     });
 
-  function isZoeAdmin() {
+    function isZoeAdmin() {
       return !!(
         appState.loggedInUser &&
         String(appState.loggedInUser.username || "").trim().toLowerCase() === "zoe"
@@ -2064,7 +2113,7 @@ function scheduleAutoBackup() {
     function renderSettingsView() {
       renderSettingsSpecialists();
       renderSettingsAccounts();
-      document.getElementById("gasUrlInput").value = appState.gasUrl || "";
+      document.getElementById("gasUrlInput").value = appState.gasUrl || DEFAULT_GAS_URL;
     }
 
     function renderSettingsSpecialists() {
@@ -2157,56 +2206,56 @@ function scheduleAutoBackup() {
       showToast("已儲存 Google Apps Script Web App 網址");
     }
 
-  async function backupToGoogleSheet() {
-  const url = appState.gasUrl || document.getElementById("gasUrlInput").value.trim();
-  if (!url) {
-    showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
-    return;
-  }
-  try {
-    showToast("正在將專案資料備份至 Google 試算表...");
-    const payload = JSON.stringify({
-      exportedAt: new Date().toISOString(),
-      specialists: appState.specialists,
-      accounts: appState.accounts,
-      projects: appState.projects
-    });
-    const chunkSize = 1500;
-    const chunks = [];
-    for (let i = 0; i < payload.length; i += chunkSize) {
-      chunks.push(payload.slice(i, i + chunkSize));
-    }
-    for (let i = 0; i < chunks.length; i++) {
-      const qs = new URLSearchParams({
-        action: "chunk",
-        idx: String(i),
-        data: chunks[i]
-      });
-      await fetch(`${url}?${qs.toString()}`, { mode: "no-cors" });
-    }
-    const commitQs = new URLSearchParams({
-      action: "commit",
-      count: String(chunks.length)
-    });
-    await fetch(`${url}?${commitQs.toString()}`, { mode: "no-cors" });
-    showToast(`已成功備份 ${appState.projects.length} 筆專案資料至 Google 試算表！`);
-  } catch (err) {
-    console.error(err);
-    showToast("備份失敗，請檢查網址或網路連線", "error");
+    async function backupToGoogleSheet() {
+      const url = (appState.gasUrl || document.getElementById("gasUrlInput").value || DEFAULT_GAS_URL).trim();
+      if (!url) {
+        showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
+        return;
+      }
+      try {
+        showToast("正在將專案資料備份至 Google 試算表...");
+        const payload = JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          specialists: appState.specialists,
+          accounts: appState.accounts,
+          projects: appState.projects
+        });
+        const chunkSize = 1500;
+        const chunks = [];
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          chunks.push(payload.slice(i, i + chunkSize));
+        }
+        for (let i = 0; i < chunks.length; i++) {
+          const body = new URLSearchParams({
+            action: "chunk",
+            idx: String(i),
+            data: chunks[i]
+          });
+          await fetch(url, { method: "POST", mode: "no-cors", body });
+        }
+        const commitBody = new URLSearchParams({
+          action: "commit",
+          count: String(chunks.length)
+        });
+        await fetch(url, { method: "POST", mode: "no-cors", body: commitBody });
+        showToast(`已成功備份 ${appState.projects.length} 筆專案資料至 Google 試算表！`);
+      } catch (err) {
+        console.error(err);
+        showToast("備份失敗，請檢查網址或網路連線", "error");
       }
     }
 
     async function restoreFromGoogleSheet() {
-      const url = appState.gasUrl || document.getElementById("gasUrlInput").value.trim();
+      const url = (appState.gasUrl || document.getElementById("gasUrlInput").value || DEFAULT_GAS_URL).trim();
       if (!url) {
         showToast("請先輸入並儲存 Google Apps Script Web App URL", "warning");
         return;
       }
       try {
         showToast("正在從 Google 試算表讀取備份資料...");
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: "no-store" });
         const data = await res.json();
-      if (data && Array.isArray(data.projects) && data.projects.length > 0) {
+        if (data && Array.isArray(data.projects) && data.projects.length > 0) {
           appState.projects = data.projects;
           if (Array.isArray(data.specialists) && data.specialists.length) {
             appState.specialists = data.specialists;
@@ -2217,7 +2266,7 @@ function scheduleAutoBackup() {
           saveAppState();
           renderSettingsView();
           showToast(`已成功從 Google 試算表還原 ${appState.projects.length} 筆專案資料！`);
-       } else {
+        } else {
           showToast("Google 試算表中尚無有效的專案備份資料", "warning");
         }
       } catch (err) {
